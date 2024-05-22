@@ -28,7 +28,7 @@ bpy.ops.object.delete()
 def register():
     # Get the absolute path of the script file's directory
     for root, dirs, files in os.walk(os.path.dirname(os.path.abspath(__file__))):
-        if "14blender_plugin050224.py" in files:
+        if "partitioned_blender_plugin.py" in files:
             package_dir = root 
     # package_dir = "C:/Users/radhika.tekade/Desktop/blender_plugin"
     sys.path.append(package_dir)
