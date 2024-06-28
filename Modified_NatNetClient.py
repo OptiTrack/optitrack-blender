@@ -1,3 +1,4 @@
+# only rigid bodies
 #Copyright © 2018 Naturalpoint
 #
 #Licensed under the Apache License, Version 2.0 (the "License")
@@ -20,8 +21,10 @@ import struct
 from threading import Thread
 import copy
 import time
-import DataDescriptions
-import MoCapData
+from . import DataDescriptions
+from . import MoCapData
+# import DataDescriptions
+# import MoCapData
 
 def trace( *args ):
     # uncomment the one you want to use
@@ -81,6 +84,8 @@ class NatNetClient:
 
         # Set this to a callback method of your choice to receive per-rigid-body data at each frame.
         self.rigid_body_listener = None
+        self.model_changed = None
+        # self.rigid_body_id_listener = []
         self.new_frame_listener  = None
 
         # Set Application Name
@@ -320,6 +325,67 @@ class NatNetClient:
 
         return result
 
+#Unpack Mocap Data Functions
+    def __unpack_frame_prefix_data( self, data):
+        offset = 0
+        # Frame number (4 bytes)
+        frame_number = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
+        offset += 4
+        frame_prefix_data=MoCapData.FramePrefixData(frame_number)
+        return offset, frame_prefix_data
+
+    def __unpack_marker_set_data( self, data, packet_size, major, minor):
+        offset = 0
+        # Markerset count (4 bytes)
+        marker_set_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
+        offset += 4
+
+        # get data size (4 bytes)
+        offset_tmp, unpackedDataSize = self.__unpack_data_size(data[offset:],major, minor)
+        offset += offset_tmp
+
+        for i in range( 0, marker_set_count ):
+            model_name, separator, remainder = bytes(data[offset:]).partition( b'\0' )
+            offset += len( model_name ) + 1
+            # Marker count (4 bytes)
+            marker_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
+            offset += 4
+            if(marker_count < 0):
+                print("WARNING: Early return.  Invalid marker count")
+                offset = len(data)
+                return offset
+            elif(marker_count > 10000):
+                print("WARNING: Early return.  Marker count too high")
+                offset = len(data)
+                return offset
+
+            # trace_mf( "Marker Count    : ", marker_count )
+            for j in range( 0, marker_count ):
+                if(len(data)<(offset+12)):
+                    print("WARNING: Early return.  Out of data at marker ",j," of ", marker_count)
+                    offset = len(data)
+                    return offset
+                offset += 12
+        return offset
+
+    def __unpack_legacy_other_markers( self, data, packet_size, major, minor):
+        offset = 0
+
+        # Markerset count (4 bytes)
+        other_marker_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
+        offset += 4
+
+        # get data size (4 bytes)
+        offset_tmp, unpackedDataSize = self.__unpack_data_size(data[offset:],major, minor)
+        offset += offset_tmp
+
+        if(other_marker_count > 0):
+            # get legacy_marker positions
+            ### legacy_marker_data
+            for j in range( 0, other_marker_count ):
+                offset += 12
+        return offset
+    
     # Unpack a rigid body object from a data packet
     def __unpack_rigid_body( self, data, major, minor, rb_num):
         offset = 0
@@ -402,172 +468,13 @@ class NatNetClient:
                 rigid_body.tracking_valid = False
 
         return offset, rigid_body
-
-    # Unpack a skeleton object from a data packet
-    def __unpack_skeleton( self, data, major, minor, skeleton_num=0):
-        offset = 0
-        new_id = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
-        offset += 4
-        trace_mf( "Skeleton %3.1d ID: %3.1d"% (skeleton_num, new_id ))
-        skeleton = MoCapData.Skeleton(new_id)
-
-        rigid_body_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
-        offset += 4
-        trace_mf( "Rigid Body Count : %3.1d"% rigid_body_count )
-        if(rigid_body_count > 0):
-            for rb_num in range( 0, rigid_body_count ):
-                offset_tmp, rigid_body = self.__unpack_rigid_body( data[offset:], major, minor, rb_num )
-                skeleton.add_rigid_body(rigid_body)
-                offset+=offset_tmp
-
-        return offset, skeleton
-
-    def __unpack_asset( self, data, major, minor, asset_num=0):
-        offset = 0
-        trace_dd( "\tAsset        : %d"% (asset_num ))
-        # Asset ID 4 bytes
-        new_id =  int.from_bytes(data[offset:offset+4],'little',  signed=True)
-        offset += 4
-        asset = MoCapData.Asset()
     
-        trace_dd( "\tAsset ID     : %d"% (new_id ))
-        asset.set_id(new_id)
-
-        # # of RigidBodies
-        numRBs =  int.from_bytes(data[offset:offset+4],'little',  signed=True)
-        offset += 4
-        trace_dd( "\tRigid Bodies : %d" % (numRBs))
-        
-        offset1=0
-        for rb_num in range(numRBs):
-            # # of RigidBodies
-            offset1,rigid_body = self.__unpack_asset_rigid_body_data(data[offset:], major, minor)
-            offset += offset1
-            rigid_body.rb_num=rb_num
-            asset.add_rigid_body(rigid_body)
-
-        # # of Markers
-        numMarkers =  int.from_bytes(data[offset:offset+4],'little',  signed=True)
-        offset += 4
-        trace_dd( "\tMarkers      : %d" % (numMarkers))
-        
-        for marker_num in range(numMarkers):
-            # # of Markers
-            offset1,marker = self.__unpack_asset_marker_data( data[offset:], major, minor)
-            offset += offset1
-            marker.marker_num=marker_num
-            asset.add_marker(marker)
-
-        return offset, asset
-
-#Unpack Mocap Data Functions
-    def __unpack_frame_prefix_data( self, data):
-        offset = 0
-        # Frame number (4 bytes)
-        frame_number = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
-        offset += 4
-        trace_mf( "Frame #: %3.1d"% frame_number )
-        frame_prefix_data=MoCapData.FramePrefixData(frame_number)
-        return offset, frame_prefix_data
-
-    def __unpack_data_size(self, data, major, minor):
-        sizeInBytes=0
-        offset=0
-
-        if( ( (major == 4) and (minor>0) ) or (major > 4)):
-            sizeInBytes = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
-            offset += 4
-            trace_mf( "Byte Count: %3.1d"% sizeInBytes )
-
-        return offset, sizeInBytes
-
-    def __unpack_legacy_other_markers( self, data, packet_size, major, minor):
-        offset = 0
-
-        # Markerset count (4 bytes)
-        other_marker_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
-        offset += 4
-        trace_mf( "Other Marker Count:", other_marker_count )
-
-        # get data size (4 bytes)
-        offset_tmp, unpackedDataSize = self.__unpack_data_size(data[offset:],major, minor)
-        offset += offset_tmp
-
-        other_marker_data = MoCapData.LegacyMarkerData()
-        if(other_marker_count > 0):
-            # get legacy_marker positions
-            ### legacy_marker_data
-            for j in range( 0, other_marker_count ):
-                pos = Vector3.unpack( data[offset:offset+12] )
-                offset += 12
-                trace_mf( "\tMarker %3.1d : [x=%3.2f,y=%3.2f,z=%3.2f]"%( j, pos[0], pos[1], pos[2] ))
-                other_marker_data.add_pos(pos)
- 
-        return offset, other_marker_data
-
-    def __unpack_marker_set_data( self, data, packet_size, major, minor):
-        marker_set_data=MoCapData.MarkerSetData()
-        offset = 0
-        # Markerset count (4 bytes)
-        marker_set_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
-        offset += 4
-        trace_mf( "Markerset Count:", marker_set_count )
-
-        # get data size (4 bytes)
-        offset_tmp, unpackedDataSize = self.__unpack_data_size(data[offset:],major, minor)
-        offset += offset_tmp
-
-        for i in range( 0, marker_set_count ):
-            marker_data = MoCapData.MarkerData()
-            # Model name
-            model_name, separator, remainder = bytes(data[offset:]).partition( b'\0' )
-            offset += len( model_name ) + 1
-            trace_mf( "Model Name      : ", model_name.decode( 'utf-8' ) )
-            marker_data.set_model_name(model_name)
-            # Marker count (4 bytes)
-            marker_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
-            offset += 4
-            if(marker_count < 0):
-                print("WARNING: Early return.  Invalid marker count")
-                offset = len(data)
-                return offset, marker_set_data
-            elif(marker_count > 10000):
-                print("WARNING: Early return.  Marker count too high")
-                offset = len(data)
-                return offset, marker_set_data
-
-            trace_mf( "Marker Count    : ", marker_count )
-            for j in range( 0, marker_count ):
-                if(len(data)<(offset+12)):
-                    print("WARNING: Early return.  Out of data at marker ",j," of ", marker_count)
-                    offset = len(data)
-                    return offset, marker_set_data
-                    break
-                pos = Vector3.unpack( data[offset:offset+12] )
-                offset += 12
-                trace_mf( "\tMarker %3.1d : [x=%3.2f,y=%3.2f,z=%3.2f]"%( j, pos[0], pos[1], pos[2] ))
-                marker_data.add_pos(pos)
-            marker_set_data.add_marker_data(marker_data)
-
-        # Unlabeled markers count (4 bytes)
-        #unlabeled_markers_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
-        #offset += 4
-        #trace_mf( "Unlabeled Marker Count:", unlabeled_markers_count )
-
-        #for i in range( 0, unlabeled_markers_count ):
-        #    pos = Vector3.unpack( data[offset:offset+12] )
-        #    offset += 12
-        #    trace_mf( "\tMarker %3.1d : [%3.2f,%3.2f,%3.2f]"%( i, pos[0], pos[1], pos[2] ))
-        #    marker_set_data.add_unlabeled_marker(pos)
-        return offset, marker_set_data
-
     def __unpack_rigid_body_data( self, data, packet_size, major, minor):
         rigid_body_data = MoCapData.RigidBodyData()
         offset = 0
         # Rigid body count (4 bytes)
         rigid_body_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
         offset += 4
-        trace_mf( "Rigid Body Count:", rigid_body_count )
 
         # get data size (4 bytes)
         offset_tmp, unpackedDataSize = self.__unpack_data_size(data[offset:],major, minor)
@@ -577,192 +484,215 @@ class NatNetClient:
             offset_tmp, rigid_body = self.__unpack_rigid_body( data[offset:], major, minor, i )
             offset += offset_tmp
             rigid_body_data.add_rigid_body(rigid_body)
+        
+        # self.rigid_body_id_listener = rigid_body_data.get_id_list()
 
         return offset, rigid_body_data
 
+    def __unpack_skeleton_rigid_body( self, data, major, minor, rb_num):
+        offset = 0
 
+        # ID (4 bytes)
+        offset += 4
+
+        # Position and orientation
+        offset += 12 # pos
+        offset += 16 # ori
+
+        # RB Marker Data ( Before version 3.0.  After Version 3.0 Marker data is in description )
+        if( major < 3  and major != 0) :
+            # Marker count (4 bytes)
+            marker_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
+            offset += 4
+
+            # Marker positions
+            for i in range( 0, marker_count ):
+                offset += 12
+
+            if major >= 2:
+                # Marker ID's
+                for i in range( 0, marker_count ):
+                    offset += 4
+
+                # Marker sizes
+                for i in range( 0, marker_count ):
+                    offset += 4
+
+        if major >= 2 :
+            offset += 4
+
+        # Version 2.6 and later
+        if ( ( major == 2 ) and ( minor >= 6 ) ) or major > 2 :
+            offset += 2
+
+        return offset
+    
+    # Unpack a skeleton object from a data packet
+    def __unpack_skeleton( self, data, major, minor, skeleton_num=0):
+        offset = 0
+        offset += 4
+
+        rigid_body_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
+        offset += 4
+        if(rigid_body_count > 0):
+            for rb_num in range( 0, rigid_body_count ):
+                offset_tmp = self.__unpack_skeleton_rigid_body( data[offset:], major, minor, rb_num )
+                offset+=offset_tmp
+        return offset
+    
     def __unpack_skeleton_data( self, data, packet_size, major, minor):
-        skeleton_data = MoCapData.SkeletonData()
-
         offset = 0
         # Version 2.1 and later
         skeleton_count = 0
         if( ( major == 2 and minor > 0 ) or major > 2 ):
             skeleton_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
             offset += 4
-            trace_mf( "Skeleton Count:", skeleton_count )
             
             # Get data size (4 bytes)
             offset_tmp, unpackedDataSize = self.__unpack_data_size(data[offset:],major, minor)
             offset += offset_tmp
-            if(skeleton_count >0):
+            if(skeleton_count > 0):
                 for skeleton_num in range( 0, skeleton_count ):
-                    rel_offset, skeleton = self.__unpack_skeleton( data[offset:], major, minor, skeleton_num )
+                    rel_offset = self.__unpack_skeleton( data[offset:], major, minor, skeleton_num )
                     offset += rel_offset
-                    skeleton_data.add_skeleton(skeleton)
+        return offset
+    
+    def __unpack_asset( self, data, major, minor, asset_num=0):
+        offset = 0
+        offset += 4
 
-        return offset, skeleton_data
+        # # of RigidBodies
+        numRBs =  int.from_bytes(data[offset:offset+4],'little',  signed=True)
+        offset += 4
+        
+        offset1 = 0
+        for rb_num in range(numRBs):
+            # # of RigidBodies
+            offset1, rigid_body = self.__unpack_asset_rigid_body_data(data[offset:], major, minor)
+            offset += offset1
 
-    def __decode_marker_id(self, new_id):
-        model_id = 0
-        marker_id = 0
-        model_id = new_id >> 16
-        marker_id = new_id & 0x0000ffff
-        return model_id, marker_id
+        # # of Markers
+        numMarkers =  int.from_bytes(data[offset:offset+4],'little',  signed=True)
+        offset += 4
+        
+        for marker_num in range(numMarkers):
+            # # of Markers
+            offset1,marker = self.__unpack_asset_marker_data( data[offset:], major, minor)
+            offset += offset1
+
+        return offset
+
+    def __unpack_asset_data( self, data, packet_size, major, minor):
+        offset = 0
+        # # Asset Count
+        asset_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
+        offset += 4
+
+        # Get data size (4 bytes)
+        offset_tmp, unpackedDataSize = self.__unpack_data_size(data[offset:],major, minor)
+        offset += offset_tmp
+
+        # Unpack assets 
+        for asset_num in range( 0, asset_count ):
+            rel_offset, asset = self.__unpack_asset( data[offset:], major, minor, asset_num )
+            offset += rel_offset
+
+        return offset
 
     def __unpack_labeled_marker_data( self, data, packet_size, major, minor):
-        labeled_marker_data = MoCapData.LabeledMarkerData()
         offset = 0
-        # Labeled markers (Version 2.3 and later)
+        # # Labeled markers (Version 2.3 and later)
         labeled_marker_count = 0
         if( ( major == 2 and minor > 3 ) or major > 2 ):
             labeled_marker_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
             offset += 4
-            trace_mf( "Labeled Marker Count:", labeled_marker_count )
 
             # get data size (4 bytes)
             offset_tmp, unpackedDataSize = self.__unpack_data_size(data[offset:],major, minor)
             offset += offset_tmp
 
             for lm_num in range( 0, labeled_marker_count ):
-                model_id = 0
-                marker_id = 0
-                tmp_id = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
                 offset += 4
-                model_id, marker_id = self.__decode_marker_id(tmp_id)
-                pos = Vector3.unpack( data[offset:offset+12] )
                 offset += 12
-                size = FloatValue.unpack( data[offset:offset+4] )
                 offset += 4
-                trace_mf("%3.1d ID     : [MarkerID: %3.1d] [ModelID: %3.1d]"%(lm_num, marker_id,model_id))
-                trace_mf("    pos  : [%3.2f, %3.2f, %3.2f]"%(pos[0],pos[1],pos[2]))
-                trace_mf("    size : [%3.2f]"%size)
-
 
                 # Version 2.6 and later
-                param = 0
                 if( ( major == 2 and minor >= 6 ) or major > 2):
-                    param, = struct.unpack( 'h', data[offset:offset+2] )
                     offset += 2
-                    #occluded = ( param & 0x01 ) != 0
-                    #point_cloud_solved = ( param & 0x02 ) != 0
-                    #model_solved = ( param & 0x04 ) != 0
 
                 # Version 3.0 and later
-                residual = 0.0
                 if major >= 3 :
-                    residual, = FloatValue.unpack( data[offset:offset+4] )
                     offset += 4
-                    residual = residual * 1000.0
-                    trace_mf( "    err  : [%3.2f]"% residual )
 
-                labeled_marker = MoCapData.LabeledMarker(tmp_id,pos,size,param, residual)
-                labeled_marker_data.add_labeled_marker(labeled_marker)
-
-        return offset, labeled_marker_data
+        return offset
 
     def __unpack_force_plate_data( self, data, packet_size, major, minor):
-        force_plate_data = MoCapData.ForcePlateData()
         n_frames_show_max = 4
         offset = 0
         # Force Plate data (version 2.9 and later)
         force_plate_count = 0
         if( ( major == 2 and minor >= 9 ) or major > 2 ):
-            force_plate_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
             offset += 4
-            trace_mf( "Force Plate Count:", force_plate_count )
 
             # get data size (4 bytes)
             offset_tmp, unpackedDataSize = self.__unpack_data_size(data[offset:],major, minor)
             offset += offset_tmp
 
             for i in range( 0, force_plate_count ):
-                # ID
-                force_plate_id = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
                 offset += 4
-                force_plate = MoCapData.ForcePlate(force_plate_id)
 
                 # Channel Count
                 force_plate_channel_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
                 offset += 4
 
-                trace_mf( "\tForce Plate %3.1d ID: %3.1d Num Channels: %3.1d"% (i, force_plate_id, force_plate_channel_count ))
-
                 # Channel Data
                 for j in range( force_plate_channel_count ):
-                    fp_channel_data = MoCapData.ForcePlateChannelData()
                     force_plate_channel_frame_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
                     offset += 4
-                    out_string="\tChannel %3.1d: "%( j )
-                    out_string+="  %3.1d Frames - Frame Data: "%(force_plate_channel_frame_count)
 
                     # Force plate frames
                     n_frames_show = min(force_plate_channel_frame_count, n_frames_show_max)
                     for k in range( force_plate_channel_frame_count ):
-                        force_plate_channel_val = FloatValue.unpack( data[offset:offset+4] )
                         offset += 4
-                        fp_channel_data.add_frame_entry(force_plate_channel_val)
 
                         if k < n_frames_show:
-                            out_string += "%3.2f "%(force_plate_channel_val)
+                            pass
                     if n_frames_show < force_plate_channel_frame_count:
-                        out_string += " showing %3.1d of %3.1d frames"%(n_frames_show, force_plate_channel_frame_count)
-                    trace_mf( "%s"% out_string )
-                    force_plate.add_channel_data(fp_channel_data)
-                force_plate_data.add_force_plate(force_plate)
-        return offset, force_plate_data
+                        pass
+        return offset
 
     def __unpack_device_data( self, data, packet_size, major, minor):
-        device_data = MoCapData.DeviceData()
         n_frames_show_max = 4
         offset = 0
         # Device data (version 2.11 and later)
         device_count = 0
         if ( major == 2 and minor >= 11 ) or (major > 2) :
-            device_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
             offset += 4
-            trace_mf( "Device Count:", device_count )
 
             # get data size (4 bytes)
             offset_tmp, unpackedDataSize = self.__unpack_data_size(data[offset:],major, minor)
             offset += offset_tmp
 
             for i in range( 0, device_count ):
-
-                # ID
-                device_id = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
                 offset += 4
-                device = MoCapData.Device(device_id)
                 # Channel Count
                 device_channel_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
                 offset += 4
 
-                trace_mf( "\tDevice %3.1d      ID: %3.1d Num Channels: %3.1d"% (i, device_id, device_channel_count ))
-
                 # Channel Data
                 for j in range( 0, device_channel_count ):
-                    device_channel_data = MoCapData.DeviceChannelData()
                     device_channel_frame_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
                     offset += 4
-                    out_string="\tChannel %3.1d "% (j)
-                    out_string+="  %3.1d Frames - Frame Data: "%(device_channel_frame_count)
 
                     # Device Frame Data
                     n_frames_show = min(device_channel_frame_count, n_frames_show_max)
                     for k in range( 0, device_channel_frame_count ):
-                        device_channel_val = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
-                        device_channel_val = FloatValue.unpack( data[offset:offset+4] )
                         offset += 4
                         if k < n_frames_show:
-                            out_string += "%3.2f "%(device_channel_val)
-
-                        device_channel_data.add_frame_entry(device_channel_val)
+                            pass
                     if n_frames_show < device_channel_frame_count:
-                        out_string += " showing %3.1d of %3.1d frames"%(n_frames_show, device_channel_frame_count)
-                    trace_mf( "%s"% out_string )
-                    device.add_channel_data(device_channel_data)
-                device_data.add_device(device)
-        return offset, device_data
+                        pass
+        return offset
 
     def __unpack_frame_suffix_data( self, data, packet_size, major, minor):
         frame_suffix_data = MoCapData.FrameSuffixData()
@@ -837,7 +767,24 @@ class NatNetClient:
         frame_suffix_data.tracked_models_changed = tracked_models_changed
 
         return offset, frame_suffix_data
+    
+    def __unpack_data_size(self, data, major, minor):
+        sizeInBytes=0
+        offset=0
 
+        if( ( (major == 4) and (minor>0) ) or (major > 4)):
+            sizeInBytes = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
+            offset += 4
+            trace_mf( "Byte Count: %3.1d"% sizeInBytes )
+
+        return offset, sizeInBytes
+
+    def __decode_marker_id(self, new_id):
+        model_id = 0
+        marker_id = 0
+        model_id = new_id >> 16
+        marker_id = new_id & 0x0000ffff
+        return model_id, marker_id
 
     # Unpack data from a motion capture frame message
     def __unpack_mocap_data( self, data : bytes, packet_size, major, minor):
@@ -853,87 +800,69 @@ class NatNetClient:
         frame_number = frame_prefix_data.frame_number
 
         #Markerset Data
-        rel_offset, marker_set_data =self.__unpack_marker_set_data(data[offset:], (packet_size - offset),major, minor)
+        rel_offset =self.__unpack_marker_set_data(data[offset:], (packet_size - offset),major, minor)
         offset += rel_offset
-        mocap_data.set_marker_set_data(marker_set_data)
-        marker_set_count = marker_set_data.get_marker_set_count()
-        unlabeled_markers_count = marker_set_data.get_unlabeled_marker_count()
 
         # Legacy Other Markers
-        rel_offset, legacy_other_markers =self.__unpack_legacy_other_markers(data[offset:], (packet_size - offset),major, minor)
+        rel_offset =self.__unpack_legacy_other_markers(data[offset:], (packet_size - offset),major, minor)
         offset += rel_offset
-        mocap_data.set_legacy_other_markers(legacy_other_markers)
-        marker_set_count = legacy_other_markers.get_marker_count()
-        legacy_other_markers_count = marker_set_data.get_unlabeled_marker_count()
-
+        
         # Rigid Body Data
         rel_offset, rigid_body_data = self.__unpack_rigid_body_data(data[offset:], (packet_size - offset),major, minor)
         offset += rel_offset
         mocap_data.set_rigid_body_data(rigid_body_data)
         rigid_body_count = rigid_body_data.get_rigid_body_count()
+        rigid_body_id = rigid_body_data.get_id_list()
 
         # Skeleton Data
-        rel_offset, skeleton_data = self.__unpack_skeleton_data(data[offset:], (packet_size - offset),major, minor)
+        rel_offset = self.__unpack_skeleton_data(data[offset:], (packet_size - offset),major, minor)
         offset += rel_offset
-        mocap_data.set_skeleton_data(skeleton_data)
-        skeleton_count = skeleton_data.get_skeleton_count()
 
         # Assets ( Motive 3.1/NatNet 4.1 and greater)
-        asset_count=0
         if (((major == 4) and (minor > 0)) or (major > 4)):
-            rel_offset, asset_data = self.__unpack_asset_data(data[offset:], (packet_size - offset),major, minor)
+            rel_offset = self.__unpack_asset_data(data[offset:], (packet_size - offset),major, minor)
             offset += rel_offset
-            mocap_data.set_asset_data(asset_data)
-            asset_count = asset_data.get_asset_count()
-
+            
         # Labeled Marker Data
-        rel_offset, labeled_marker_data = self.__unpack_labeled_marker_data(data[offset:], (packet_size - offset),major, minor)
+        rel_offset = self.__unpack_labeled_marker_data(data[offset:], (packet_size - offset),major, minor)
         offset += rel_offset
-        mocap_data.set_labeled_marker_data(labeled_marker_data)
-        labeled_marker_count = labeled_marker_data.get_labeled_marker_count()
-
+        
         # Force Plate Data
-        rel_offset, force_plate_data = self.__unpack_force_plate_data(data[offset:], (packet_size - offset),major, minor)
+        rel_offset = self.__unpack_force_plate_data(data[offset:], (packet_size - offset),major, minor)
         offset += rel_offset
-        mocap_data.set_force_plate_data(force_plate_data)
 
         # Device Data
-        rel_offset,device_data = self.__unpack_device_data(data[offset:], (packet_size - offset),major, minor)
+        rel_offset = self.__unpack_device_data(data[offset:], (packet_size - offset),major, minor)
         offset += rel_offset
-        mocap_data.set_device_data(device_data)
 
         # Frame Suffix Data
-        #rel_offset, timecode, timecode_sub, timestamp, is_recording, tracked_models_changed = \
         rel_offset, frame_suffix_data =   self.__unpack_frame_suffix_data(data[offset:], (packet_size - offset),major, minor)
         offset += rel_offset
         mocap_data.set_suffix_data(frame_suffix_data)
-
 
         timecode = frame_suffix_data.timecode
         timecode_sub= frame_suffix_data.timecode_sub
         timestamp = frame_suffix_data.timestamp
         is_recording = frame_suffix_data.is_recording
         tracked_models_changed = frame_suffix_data.tracked_models_changed
-
+        
+        if self.model_changed is not None:
+            self.model_changed(tracked_models_changed)
+        
         # Send information to any listener.
         if self.new_frame_listener is not None:
             data_dict={}
-            data_dict["frame_number"]=frame_number
-            data_dict[ "marker_set_count"] = marker_set_count
-            data_dict[ "unlabeled_markers_count"] = unlabeled_markers_count
+            data_dict["frame_number"] = frame_number
             data_dict[ "rigid_body_count"] = rigid_body_count
-            data_dict[ "skeleton_count"] =skeleton_count
-            data_dict[ "asset_count"] =asset_count
-            data_dict[ "labeled_marker_count"] = labeled_marker_count
             data_dict[ "timecode"] = timecode
             data_dict[ "timecode_sub"] = timecode_sub
             data_dict[ "timestamp"] = timestamp
             data_dict[ "is_recording"] = is_recording
             data_dict[ "tracked_models_changed"] = tracked_models_changed
+            data_dict["rigid_body_id"] = rigid_body_id
 
             self.new_frame_listener( data_dict )
         return offset, mocap_data
-
 
     # Unpack a Markerset description packet
     def __unpack_marker_set_description( self, data, major, minor):
@@ -1312,28 +1241,6 @@ class NatNetClient:
         marker_data = MoCapData.AssetMarkerData(marker_id, pos, marker_size, marker_params, residual)
         return offset, marker_data
 
-    def __unpack_asset_data( self, data, packet_size, major, minor):
-        asset_data = MoCapData.AssetData()
-
-        offset = 0
-
-        # Asset Count
-        asset_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
-        offset += 4
-        trace_mf( "Asset Count:", asset_count )
-
-        # Get data size (4 bytes)
-        offset_tmp, unpackedDataSize = self.__unpack_data_size(data[offset:],major, minor)
-        offset += offset_tmp
-
-        # Unpack assets 
-        for asset_num in range( 0, asset_count ):
-            rel_offset, asset = self.__unpack_asset( data[offset:], major, minor, asset_num )
-            offset += rel_offset
-            asset_data.add_asset(asset)
-
-        return offset, asset_data
-
     def __unpack_asset_description(self, data, major, minor):
         offset = 0
 
@@ -1633,6 +1540,10 @@ class NatNetClient:
             print("MoCap Frame: %d\n"%(mocap_data.prefix_data.frame_number))
             # get a string version of the data for output
             mocap_data_str=mocap_data.get_as_string()
+            # offset_r, rigid_body_data = self.__unpack_rigid_body_data(data[offset:], packet_size, major, minor)
+            # rigid_body_str = rigid_body_data.get_as_string()
+            # rigid_body_data = mocap_data.rigid_body_data
+            # print("%s\n"%rigid_body_data)
             if print_level == 0:
                 print("%s\n"%mocap_data_str)
 
