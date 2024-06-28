@@ -65,7 +65,7 @@ class Receiver(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = 'Motive'
-    bl_parent_id = 'VIEW3D_PT_plugin_motive'
+    bl_parent_id = 'VIEW3D_PT_connection'
     
     def draw(self, context):
         layout = self.layout
