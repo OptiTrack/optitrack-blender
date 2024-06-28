@@ -57,8 +57,8 @@ class Connection(Panel):
         
         row = layout.row()
         if context.window_manager.connection_status:
-            row.label(text="Started")
-    
+            row.label(text="Connected")
+
 class Receiver(Panel):
     bl_idname = "VIEW3D_PT_receiver"
     bl_label = "Receiver"
@@ -71,6 +71,7 @@ class Receiver(Panel):
         layout = self.layout
         row = layout.row()
         if context.window_manager.start_status:
+            row.label(text="Started")
             row.operator(connection_operator.PauseButtonOperator.bl_idname, text="Pause", icon='PAUSE')
             row = layout.row()
             row.operator(connection_operator.GetRigidBodiesIDsOperator.bl_idname, text="Show Current IDs")
