@@ -35,7 +35,7 @@ def register():
 
     global classes
     classes = [plugin_panels.PluginMotive, property_definitions.Initializer, plugin_panels.InitialSettings,
-               plugin_panels.Connection, plugin_panels.Receiver, connection_operator.ResetOperator,
+               plugin_panels.Connection, connection_operator.ResetOperator,
                connection_operator.ConnectButtonOperator, connection_operator.StartButtonOperator,
                connection_operator.GetRigidBodiesIDsOperator, connection_operator.PauseButtonOperator, 
                connection_operator.AssignAgainOperator, plugin_panels.Info]

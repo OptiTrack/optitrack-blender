@@ -812,7 +812,7 @@ class NatNetClient:
         offset += rel_offset
         mocap_data.set_rigid_body_data(rigid_body_data)
         rigid_body_count = rigid_body_data.get_rigid_body_count()
-        rigid_body_id = rigid_body_data.get_id_list()
+        # rigid_body_id = rigid_body_data.get_id_list()
 
         # Skeleton Data
         rel_offset = self.__unpack_skeleton_data(data[offset:], (packet_size - offset),major, minor)
@@ -1513,6 +1513,7 @@ class NatNetClient:
         return 0
 
     def __process_message( self, data : bytes, print_level=0):
+        global name_list, id_list
         #return message ID
         major = self.get_major()
         minor = self.get_minor()
@@ -1552,11 +1553,19 @@ class NatNetClient:
             trace( "Packet Size : %d"% packet_size )
             offset_tmp, data_descs = self.__unpack_data_descriptions( data[offset:], packet_size, major, minor)
             offset += offset_tmp
-            print("Data Descriptions:\n")
-            # get a string version of the data for output
-            data_descs_str=data_descs.get_as_string()
-            if print_level>0:
-                print("%s\n"%(data_descs_str))
+
+            name_list = [rigid_body.sz_name for rigid_body in data_descs.rigid_body_list]
+            id_list = [rigid_body.id_num for rigid_body in data_descs.rigid_body_list]
+
+            for i in range(len(data_descs.rigid_body_list)):
+                print("name: ", name_list[i])
+                print("id: ", id_list[i])
+             
+            # print("Data Descriptions:\n")
+            # # get a string version of the data for output
+            # data_descs_str=data_descs.get_as_string()
+            # if print_level>0:
+            #     print("%s\n"%(data_descs_str))
 
         elif message_id == self.NAT_SERVERINFO :
             trace( "Message ID  : %3.1d NAT_SERVERINFO"% message_id )

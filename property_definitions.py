@@ -1,6 +1,6 @@
 import bpy
 from bpy.props import StringProperty, IntProperty, FloatProperty, EnumProperty, BoolProperty
-from bpy.types import PropertyGroup
+from bpy.types import PropertyGroup, Object
 
 def update_unit_settings(self, context):
     initprop = bpy.context.scene.init_prop
@@ -16,6 +16,11 @@ def update_unit_scale(self, context):
 
 def update_frame_rate(self, context):
     bpy.context.scene.render.fps = bpy.context.scene.init_prop.frame_value
+
+def get_ids(self, context):
+    enum_items = [('None', 'Null', 'None')]
+
+    # for name in 
 
 class Initializer(PropertyGroup):
     server_address : StringProperty(name="Server IP",
@@ -35,7 +40,7 @@ class Initializer(PropertyGroup):
                                             ('Imperial', "Imperial", "feet, pound")
                                             ])
     
-    scale : FloatProperty(name="Unit Scale", default=1, update=update_unit_scale)
+    scale : FloatProperty(name="Unit Scale", default=1, update=update_unit_scale, precision=3)
     
     fps_value : IntProperty(name="Frame Rate", default=120, 
                                       min=1, max=1000)
@@ -53,3 +58,8 @@ class Initializer(PropertyGroup):
     default_settings: BoolProperty(name="Keep configuration", 
                                    description="Configure scene to above settings",
                                    default=True)
+
+    rigid_bodies : EnumProperty(name="Rigid Body", 
+                                description="Assign objects in scene rigid body IDs",
+                                items=get_ids,
+                                update=)
