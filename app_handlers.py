@@ -16,8 +16,8 @@ def reset_to_default(scene):
         if initprop.default_settings and initprop.fps_value == initprop.bl_rna.properties['fps_value'].default:
             initprop.fps_value = initprop.bl_rna.properties['fps_value'].default
         
-        if initprop.default_settings and initprop.desired_object == initprop.bl_rna.properties['default_settings'].default:
-            initprop.desired_object = initprop.bl_rna.properties['default_settings'].default
+        # if initprop.default_settings and initprop.desired_object == initprop.bl_rna.properties['default_settings'].default:
+        #     initprop.desired_object = initprop.bl_rna.properties['default_settings'].default
 
 @persistent
 def object_deleted_handler(scene):
@@ -42,7 +42,7 @@ def model_change_handler(scene):
     if ConnectButtonOperator.connection_setup is not None:  
         existing_connection = ConnectButtonOperator.connection_setup
         if existing_connection.streaming_client is not None:
-            print("existing indicate: ", existing_connection.indicate_model_changed)        
+            # print("existing indicate: ", existing_connection.indicate_model_changed)        
             if existing_connection.indicate_model_changed == True:
                 print("False to True!")
                 bpy.context.window_manager.connection_status = False

@@ -2,6 +2,7 @@ import bpy
 from . import connection_operator
 from .connection_operator import ConnectButtonOperator
 from bpy.types import Panel
+from .icon_viewer import IconsLoader
 
 class PluginMotive(Panel):
     bl_idname = "VIEW3D_PT_plugin_motive"
@@ -15,7 +16,6 @@ class PluginMotive(Panel):
         
         row = layout.row()
         row.label(text = "Motive Plugin", icon= 'POINTCLOUD_POINT')
-        layout.operator(connection_operator.ResetOperator.bl_idname)
 
 class InitialSettings(Panel):
     bl_idname = "VIEW3D_PT_initial_settings"
@@ -37,7 +37,6 @@ class InitialSettings(Panel):
         box.prop(initprop, 'unit_setting')
         box.prop(initprop, 'scale')
         box.prop(initprop, 'fps_value')
-        box.prop(initprop, 'desired_object')
 
         row = layout.row()
         row.prop(initprop, 'default_settings')
@@ -57,34 +56,34 @@ class Connection(Panel):
         
         row = layout.row(align=True)
         if context.window_manager.connection_status:
-            box = row.box()
-            box.label(text="Connected", icon='SEQUENCE_COLOR_04')
+            row.operator(connection_operator.ResetOperator.bl_idname, text=connection_operator.ResetOperator.bl_label, icon='SNAP_FACE')
+            row = layout.row()
+            row.operator(connection_operator.RefreshAssetsOperator.bl_idname, text=connection_operator.RefreshAssetsOperator.bl_label, icon='FILE_REFRESH')
+            row = layout.row()
+            row.label(text="Motive Assets (ID: Name)")
+            row = layout.row()
+            # row.template_list("UI_LIST", "Object List", context.scene, "obj_ls", rows=1)
+            # obj_ls = context.scene.get('obj_ls', {})
+            obj_ls = ConnectButtonOperator.connection_setup.streaming_client.desc_dict
+            if obj_ls:
+                box = layout.box()
+                for key, val in obj_ls.items():
+                    row = box.row()
+                    row.label(text=str(key) + ": " + str(val), icon_value = IconsLoader.get_icon("active"))
+            else:
+                box = layout.box()
+                row = box.row()
+            
             row = layout.row()
             if context.window_manager.start_status:
-                row.label(text="Started")
-                row.operator(connection_operator.PauseButtonOperator.bl_idname, text="Pause", icon='PAUSE')
-                row = layout.row()
-                row.operator(connection_operator.GetRigidBodiesIDsOperator.bl_idname, text="Show Current IDs")
-                id_ls = context.scene.get('id_ls', [])
-                if id_ls:
-                    box = layout.box()
-                    # box.label(text="IDs: ")
-                    row = box.row()
-                    for item in id_ls:
-                        row.label(text=str(item))
-                row = layout.row()
-                row.label(text="Assigned IDs: ")
-                box = layout.box()
-                for key, val in connection_operator.ConnectButtonOperator.connection_setup.rigid_bodies.items():
-                    row = box.row()
-                    row.label(text=str(key) + ": " + str(val.name))
-                row = layout.row()
-                row.operator(connection_operator.AssignAgainOperator.bl_idname, text="Assign IDs")
+                row.label(text="Receiving", icon='CHECKMARK')
+                row.operator(connection_operator.PauseButtonOperator.bl_idname, text=connection_operator.PauseButtonOperator.bl_label, icon='PAUSE')
             else:
-                row.operator(connection_operator.StartButtonOperator.bl_idname, text="Start", icon= 'TRIA_RIGHT_BAR')
+                row.operator(connection_operator.StartButtonOperator.bl_idname, text=connection_operator.StartButtonOperator.bl_label, icon= 'TEMP')
         else:
-            layout.operator(connection_operator.ConnectButtonOperator.bl_idname, text="Connect", icon= 'SEQUENCE_COLOR_01') # 'LINK_BLEND'
+            layout.operator(connection_operator.ConnectButtonOperator.bl_idname, text=connection_operator.ConnectButtonOperator.bl_label, icon= 'TRIA_RIGHT_BAR')
 
+# Object Properties Pane
 class AssignObjects(Panel):
     bl_idname = "OBJECT_PT_assign_objects"
     bl_label = "OptiTrack Blender Plugin"
@@ -99,6 +98,12 @@ class AssignObjects(Panel):
 
         row = layout.row(align=True)
         row.label(text="Assign Object", icon='ARROW_LEFTRIGHT')
+
+        # row = layout.row(align=True)
+        # if not ConnectButtonOperator.connection_setup.streaming_client.desc_dict:
+        #     row.label(text="None")
+        # else:
+        #     row.prop(context.object, )    
 
 class Info(Panel):
     bl_idname = "VIEW3D_PT_info"

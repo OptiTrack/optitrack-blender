@@ -1,12 +1,14 @@
 import bpy
+import time
 from bpy.types import Operator
 import sys
-from threading import Lock
+from threading import Lock, Event
 from queue import Queue
-from .Modified_NatNetClient import NatNetClient, name_list, id_list
+from .Modified_NatNetClient import NatNetClient
+# from . import Modified_NatNetClient
 from .MoCapData import MoCapData
 
-# Define a custom property to track connection state
+# Define a custom property to track states
 bpy.types.WindowManager.connection_status = bpy.props.BoolProperty(name="Connection Status", default=False)
 bpy.types.WindowManager.start_status = bpy.props.BoolProperty(name="Start Status", default=False)
 
@@ -14,10 +16,11 @@ class ConnectionSetup:
     def __init__(self):
         self.streaming_client = None
         self.indicate_model_changed = None
-        self.rigid_body_ids = []
-        self.rigid_body_names = []
-        self.rigid_bodies = {} # all objects getting stored ({ID: rigid_body} pair)
-        self.rev_rigid_bodies = {} # ({rigid_body: ID} pair)
+        self.rigid_bodies_motive = {}
+        # self.rigid_body_ids = []
+        # self.rigid_body_names = []
+        self.rigid_bodies_blender = {} # all objects getting stored ({ID: rigid_body} pair)
+        self.rev_rigid_bodies_blender = {} # ({rigid_body: ID} pair)
         self.q = Queue()
         self.l = Lock()
         self.is_running = None
@@ -25,21 +28,17 @@ class ConnectionSetup:
     def reset_to_initial(self):
         self.streaming_client = None
         self.indicate_model_changed = None
-        self.rigid_body_ids = []
-        self.rigid_body_names = []
-        self.rigid_bodies = {}
-        self.rev_rigid_bodies = {} 
+        self.rigid_bodies_motive = {}
+        # self.rigid_body_ids = []
+        # self.rigid_body_names = []
+        self.rigid_bodies_blender = {}
+        self.rev_rigid_bodies_blender = {} 
         self.q = Queue()
         self.l = Lock()
         self.is_running = None
 
-    def request_data_descriptions(self, s_client):
-        # Request the model definitions
-        s_client.send_request(s_client.command_socket, s_client.NAT_REQUEST_MODELDEF,    "",  (s_client.server_ip_address, s_client.command_port) )
-        obj_names = name_list
-        obj_ids = id_list
-        return obj_names, obj_ids
-
+    def signal_model_changed(self, tracked_model_changed): # flag to keep checking if Motive .tak changed
+        self.indicate_model_changed = tracked_model_changed
 
     def connect_button_clicked(self, context): 
         # Initialize streaming client       
@@ -71,7 +70,6 @@ class ConnectionSetup:
 
             # Update connection state
             context.window_manager.connection_status = True
-        
         else:
             context.window_manager.connection_status = False
             try:
@@ -87,15 +85,17 @@ class ConnectionSetup:
                 # Update start state
                 context.window_manager.start_status = True
 
-    def get_rigid_body_ids(self, context): # array of all rigid bodies in the .tak
-        return self.rigid_body_ids
+    def get_rigid_body_dict(self, context): # array of all rigid bodies in the .tak
+        return self.streaming_client.desc_dict
+    
+    def request_data_descriptions(self, s_client, context):
+        # Request the model definitions
+        return_code = s_client.send_modeldef_command()
 
     def refresh_list(self, context):
-        names, ids = self.request_data_descriptions(self.streaming_client)
-        self.rigid_body_names = names
-        self.get_rigid_body_ids = ids
+        return
         
-    def assign_objs(self, context): # Assign objects in scene to rigid body IDs
+    def assign_objs(self): # Assign objects in scene to rigid body IDs
         self.l.acquire()
         try:
             for obj in bpy.data.objects:
@@ -104,37 +104,20 @@ class ConnectionSetup:
                 if last_underscore != -1:
                     obj_id = obj_name[last_underscore + 1:]
                     obj_id = int(obj_id)
-                    self.rigid_bodies[obj_id] = obj
-                    self.rev_rigid_bodies[obj] = obj_id  
+                    self.rigid_bodies_blender[obj_id] = obj
+                    self.rev_rigid_bodies_blender[obj] = obj_id  
                 else:
                     obj_id = None
-
         finally:
-            self.l.release()        
-
-    def signal_model_changed(self, tracked_model_changed):
-        self.indicate_model_changed = tracked_model_changed
+            self.l.release()
     
     # This is a callback function that gets connected to the NatNet client. It is called once per rigid body per frame
     def receive_rigid_body_frame(self, new_id, position, rotation):
-        print("recive_rigid_bodies: ", len(self.rigid_bodies))
-        print("recive_rigid_body_ids: ", len(self.rigid_body_ids))
-
-        # if len(self.rigid_bodies) > len(self.rigid_body_ids):
-        #         try:
-        #             self.l.acquire()
-        #             for key, val in self.rigid_bodies.items():
-        #                 if key not in self.rigid_body_ids:
-        #                     del self.rev_rigid_bodies[self.rigid_bodies[key]]
-        #                     del self.rigid_bodies[key]
-        #         finally:
-        #             self.l.release()
-
-        # if new_id not in self.rigid_body_ids:
-        #     self.rigid_body_ids.append(new_id)
+        print("recive_rigid_bodies: ", len(self.rigid_bodies_blender))
+        print("recive_rigid_body_ids: ", len(self.rigid_bodies_motive))
 
         # Two cases (Assign vs Create) (scratch this)
-        if new_id not in self.rigid_bodies:
+        if new_id not in self.rigid_bodies_blender:
             pass
         #     bpy.ops.object.select_all(action='DESELECT')
             
@@ -177,12 +160,12 @@ class ConnectionSetup:
                 bpy.app.timers.register(self.update_object_loc, first_interval=1/120) # freq = 120 Hz
 
     def update_object_loc(self):
-        if self.rigid_bodies:
+        if self.rigid_bodies_blender:
             self.l.acquire()
             try:
                 if not self.q.empty(): 
                     q_val = self.q.get()
-                    my_obj = self.rigid_bodies[q_val[0]] # new_id
+                    my_obj = self.rigid_bodies_blender[q_val[0]] # new_id
                     my_obj.location = q_val[1]
                     my_obj.rotation_mode = 'QUATERNION'
                     my_obj.rotation_quaternion = q_val[2]
@@ -200,7 +183,7 @@ class ConnectionSetup:
 class ConnectButtonOperator(Operator):
     bl_idname = "wm.connect_button"
     bl_description = "Establish the connection"
-    bl_label = "Connect"
+    bl_label = "Start Connection"
 
     connection_setup = None
     if connection_setup is None:
@@ -220,39 +203,28 @@ class RefreshAssetsOperator(Operator):
     bl_label = "Refresh Assets"
 
     def execute(self, context):
-        ConnectButtonOperator.connection_setup.refresh_list(context)
+        existing_connection = ConnectButtonOperator.connection_setup
+        existing_connection.request_data_descriptions(existing_connection.streaming_client, context)
+        if context.window_manager.start_status:
+            existing_connection.pause_button_clicked(context)
+        # existing_connection.refresh_list(context)
+        # existing_connection.refresh_list(context)
+        # existing_connection.rigid_bodies_motive = existing_connection.streaming_client.desc_dict
+        # print("Hi! Len of rigid_body_motive: ", len(existing_connection.rigid_bodies_motive))
+        # obj_ls = {}
+        # obj_ls = ConnectButtonOperator.connection_setup.get_rigid_body_ls(context)
+        # context.scene['obj_ls'] = obj_ls
+        # print("Hi!!", len(context.scene['obj_ls']))
         return {'FINISHED'}
 
 
 class StartButtonOperator(Operator):
     bl_idname = "wm.start_button"
     bl_description = "Start receiving the data for every frame"
-    bl_label = "Start Data"
+    bl_label = "Awaiting"
 
     def execute(self, context):
         ConnectButtonOperator.connection_setup.start_button_clicked(context)
-        return {'FINISHED'}
-
-class GetRigidBodiesIDsOperator(Operator):
-    bl_idname = "wm.get_ids"
-    bl_description = "Get the IDs of all the objects present in the frame"
-    bl_label = "Get IDs"
-    
-    def execute(self, context):
-        id_ls = []
-        if context.window_manager.connection_status:
-            if id_ls:
-                id_ls = []
-            id_ls = ConnectButtonOperator.connection_setup.get_rigid_body_ids(context)
-            context.scene['id_ls'] = id_ls
-        return {'FINISHED'}
-
-class AssignAgainOperator(Operator):
-    bl_idname = "wm.assign_again"
-    bl_label = "Assign IDs again"
-
-    def execute(self, context):
-        ConnectButtonOperator.connection_setup.assign_objs(context)
         return {'FINISHED'}
 
 class PauseButtonOperator(Operator):
@@ -268,7 +240,7 @@ class PauseButtonOperator(Operator):
 class ResetOperator(Operator): 
     bl_idname = "object.reset_operator"
     bl_description = "Reset the connection"
-    bl_label = "Reset"
+    bl_label = "Stop Connection"
 
     def execute(self, context):
         if ConnectButtonOperator.connection_setup is not None:
@@ -278,6 +250,7 @@ class ResetOperator(Operator):
         
         existing_connection = None
         
+        # Delete all custom properties of each object from collection of properties
         for attr in dir(bpy.data):
             if "bpy_prop_collection" in str(type(getattr(bpy.data, attr))):
                 for obj in getattr(bpy.data, attr):

@@ -1,6 +1,7 @@
 import bpy
-from bpy.props import StringProperty, IntProperty, FloatProperty, EnumProperty, BoolProperty
-from bpy.types import PropertyGroup, Object
+from .connection_operator import ConnectButtonOperator
+from bpy.props import StringProperty, IntProperty, FloatProperty, EnumProperty, BoolProperty, CollectionProperty
+from bpy.types import PropertyGroup, Object, Scene
 
 def update_unit_settings(self, context):
     initprop = bpy.context.scene.init_prop
@@ -17,12 +18,21 @@ def update_unit_scale(self, context):
 def update_frame_rate(self, context):
     bpy.context.scene.render.fps = bpy.context.scene.init_prop.frame_value
 
-def get_ids(self, context):
-    enum_items = [('None', 'Null', 'None')]
+def get_id_names(self, context):
+    enum_items = [('None', "Null", "None")]
 
-    # for name in 
+    existing_connection = ConnectButtonOperator.connection_setup
+    for id, name in existing_connection.rigid_bodies_motive:
+        id = str(id)
+        word = id + ": " + name
+        enum_items.append((word, word, word))
 
-class Initializer(PropertyGroup):
+def update_id_names(self, context):
+    operator = bpy.context.window_manager.operators.active
+    result_dict = operator.rigid_bodies_motive
+    print("resulting dict: ", len(result_dict))
+
+class CustomProperties(PropertyGroup):
     server_address : StringProperty(name="Server IP",
                                     description="IP of NatNet",
                                     default="127.0.0.1")
@@ -45,21 +55,25 @@ class Initializer(PropertyGroup):
     fps_value : IntProperty(name="Frame Rate", default=120, 
                                       min=1, max=1000)
     
-    desired_object : EnumProperty(name="Object",
-                                        description="shape of rigid body of your choice",
-                                        default='UV Sphere',
-                                        items=[('UV Sphere', "UV Sphere", ""),
-                                                ('Cube', "Cube", ""),
-                                               ('Ico Sphere', "Ico Sphere", ""),
-                                               ('Cylinder', "Cylinder", ""),
-                                               ('Cone', "Cone", "")
-                                               ])
+    # desired_object : EnumProperty(name="Object",
+    #                                     description="shape of rigid body of your choice",
+    #                                     default='UV Sphere',
+    #                                     items=[('UV Sphere', "UV Sphere", ""),
+    #                                             ('Cube', "Cube", ""),
+    #                                            ('Ico Sphere', "Ico Sphere", ""),
+    #                                            ('Cylinder', "Cylinder", ""),
+    #                                            ('Cone', "Cone", "")
+    #                                            ])
     
     default_settings: BoolProperty(name="Keep configuration", 
                                    description="Configure scene to above settings",
                                    default=True)
 
-    rigid_bodies : EnumProperty(name="Rigid Body", 
-                                description="Assign objects in scene rigid body IDs",
-                                items=get_ids,
-                                update=)
+    Object.rigid_bodies : EnumProperty(name="Rigid Body", 
+                                description="Assign objects in scene to rigid body IDs",
+                                items=get_id_names,
+                                update=update_id_names)
+
+# class ObjectListItem(PropertyGroup):
+#     key: IntProperty(name="Object IDs", description="Rigid Body IDs", default=-1)
+#     val: StringProperty(name="Object Names", description="Rigid Body Names", default="")
