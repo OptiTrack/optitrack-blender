@@ -15,7 +15,8 @@ class PluginMotive(Panel):
         layout = self.layout
         
         row = layout.row()
-        row.label(text = "Motive Plugin", icon= 'POINTCLOUD_POINT')
+        row.label(text = "Motive Plugin", icon_value = IconsLoader.get_icon("Motive")) 
+        # icon= 'POINTCLOUD_POINT')
 
 class InitialSettings(Panel):
     bl_idname = "VIEW3D_PT_initial_settings"
@@ -56,9 +57,13 @@ class Connection(Panel):
         
         row = layout.row(align=True)
         if context.window_manager.connection_status:
-            row.operator(connection_operator.ResetOperator.bl_idname, text=connection_operator.ResetOperator.bl_label, icon='SNAP_FACE')
+            row.operator(connection_operator.ResetOperator.bl_idname, \
+                         text=connection_operator.ResetOperator.bl_label, \
+                            icon_value = IconsLoader.get_icon("Stop")) # icon='SNAP_FACE')
             row = layout.row()
-            row.operator(connection_operator.RefreshAssetsOperator.bl_idname, text=connection_operator.RefreshAssetsOperator.bl_label, icon='FILE_REFRESH')
+            row.operator(connection_operator.RefreshAssetsOperator.bl_idname, \
+                         text=connection_operator.RefreshAssetsOperator.bl_label, \
+                            icon_value = IconsLoader.get_icon("Refresh")) # icon='FILE_REFRESH')
             row = layout.row()
             row.label(text="Motive Assets (ID: Name)")
             row = layout.row()
@@ -69,19 +74,25 @@ class Connection(Panel):
                 box = layout.box()
                 for key, val in obj_ls.items():
                     row = box.row()
-                    row.label(text=str(key) + ": " + str(val), icon_value = IconsLoader.get_icon("active"))
+                    row.label(text=str(key) + ": " + str(val), icon_value = IconsLoader.get_icon("RigidBody"))
             else:
                 box = layout.box()
                 row = box.row()
             
             row = layout.row()
             if context.window_manager.start_status:
-                row.label(text="Receiving", icon='CHECKMARK')
-                row.operator(connection_operator.PauseButtonOperator.bl_idname, text=connection_operator.PauseButtonOperator.bl_label, icon='PAUSE')
+                row.label(text="Receiving", icon_value = IconsLoader.get_icon("Checkmark")) # icon='CHECKMARK')
+                row.operator(connection_operator.PauseButtonOperator.bl_idname, \
+                             text=connection_operator.PauseButtonOperator.bl_label, \
+                                icon_value = IconsLoader.get_icon("Pause")) # icon='PAUSE')
             else:
-                row.operator(connection_operator.StartButtonOperator.bl_idname, text=connection_operator.StartButtonOperator.bl_label, icon= 'TEMP')
+                row.operator(connection_operator.StartButtonOperator.bl_idname, \
+                             text=connection_operator.StartButtonOperator.bl_label, \
+                                icon_value = IconsLoader.get_icon("Clock")) # icon= 'TEMP')
         else:
-            layout.operator(connection_operator.ConnectButtonOperator.bl_idname, text=connection_operator.ConnectButtonOperator.bl_label, icon= 'TRIA_RIGHT_BAR')
+            layout.operator(connection_operator.ConnectButtonOperator.bl_idname, \
+                            text=connection_operator.ConnectButtonOperator.bl_label, \
+                                icon_value = IconsLoader.get_icon("Connect")) # icon= 'TRIA_RIGHT_BAR')
 
 # Object Properties Pane
 class AssignObjects(Panel):
@@ -89,7 +100,7 @@ class AssignObjects(Panel):
     bl_label = "OptiTrack Blender Plugin"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
-    # bl_context = ''
+    bl_context = "object"
     bl_options = {'HEADER_LAYOUT_EXPAND'}
 
     def draw(self, context):
@@ -98,6 +109,14 @@ class AssignObjects(Panel):
 
         row = layout.row(align=True)
         row.label(text="Assign Object", icon='ARROW_LEFTRIGHT')
+
+        layout.use_property_split = True
+        flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=False)
+
+        col = flow.column()
+        col.prop(text="Rigid Bodies: ")
+
+        col.separator()
 
         # row = layout.row(align=True)
         # if not ConnectButtonOperator.connection_setup.streaming_client.desc_dict:
@@ -118,7 +137,7 @@ class Info(Panel):
         layout = self.layout
         
         row = layout.row()
-        row.label(text = "INFO ABOUT THE PLUGIN", icon= 'INFO')
+        row.label(text = "INFO ABOUT THE PLUGIN", icon_value = IconsLoader.get_icon("Info")) # icon= 'INFO')
         row = layout.row()
         row.operator("wm.url_open", text = "Website").url = "https://optitrack.com"
         row.operator("wm.url_open", text = "Documentation").url = "https://docs.optitrack.com/"
