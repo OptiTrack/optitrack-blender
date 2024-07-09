@@ -22,17 +22,35 @@ def get_id_names(self, context):
     enum_items = [('None', "Null", "None")]
 
     existing_connection = ConnectButtonOperator.connection_setup
-    for id, name in existing_connection.rigid_bodies_motive:
-        id = str(id)
-        word = id + ": " + name
-        enum_items.append((word, word, word))
+    if existing_connection.rigid_bodies_motive:
+        for id, name in existing_connection.rigid_bodies_motive.items():
+            id = str(id)
+            word = id + ": " + name
+            enum_items.append((id, word, word))
+    
+    return enum_items
 
-def update_id_names(self, context):
-    operator = bpy.context.window_manager.operators.active
-    result_dict = operator.rigid_bodies_motive
-    print("resulting dict: ", len(result_dict))
+def update_list(self, context):
+    # operator = bpy.context.window_manager.operators.active
+    # result_dict = operator.rigid_bodies_motive
+    # print("resulting dict: ", len(result_dict))
+    obj = context.object
+    selected_option = obj.obj_prop.rigid_bodies
+    print(f"Selected option for object {obj.name}: {selected_option}")
+    existing_conn = ConnectButtonOperator.connection_setup
+    if selected_option is not None:
+        id = int(selected_option)
+        existing_conn.rigid_bodies_blender[id] = obj
+        existing_conn.rev_rigid_bodies_blender[obj] = id
+    print("rigid_bodies_blender: ", existing_conn.rigid_bodies_blender)
 
-class CustomProperties(PropertyGroup):
+class CustomObjectProperties(PropertyGroup):
+    rigid_bodies : EnumProperty(name="Rigid Body", 
+                                description="Assign objects in scene to rigid body IDs",
+                                items=get_id_names,
+                                update=update_list)
+
+class CustomSceneProperties(PropertyGroup):
     server_address : StringProperty(name="Server IP",
                                     description="IP of NatNet",
                                     default="127.0.0.1")
@@ -68,11 +86,6 @@ class CustomProperties(PropertyGroup):
     default_settings: BoolProperty(name="Keep configuration", 
                                    description="Configure scene to above settings",
                                    default=True)
-
-    Object.rigid_bodies : EnumProperty(name="Rigid Body", 
-                                description="Assign objects in scene to rigid body IDs",
-                                items=get_id_names,
-                                update=update_id_names)
 
 # class ObjectListItem(PropertyGroup):
 #     key: IntProperty(name="Object IDs", description="Rigid Body IDs", default=-1)

@@ -86,7 +86,7 @@ class ConnectionSetup:
                 context.window_manager.start_status = True
 
     def get_rigid_body_dict(self, context): # array of all rigid bodies in the .tak
-        return self.streaming_client.desc_dict
+        self.rigid_bodies_motive = self.streaming_client.desc_dict
     
     def request_data_descriptions(self, s_client, context):
         # Request the model definitions
@@ -173,11 +173,15 @@ class ConnectionSetup:
                 self.l.release()
         else:
             pass
+    
+    def stop_receive_rigid_body_frame(self, new_id, position, rotation):
+        pass
 
     def pause_button_clicked(self, context): # Stop the data stream, but don't update the stored info        
         if self.streaming_client:
-            self.streaming_client.shutdown()
-            self.streaming_client = None
+            # self.streaming_client.shutdown()
+            # self.streaming_client = None
+            self.streaming_client.rigid_body_listener = self.stop_receive_rigid_body_frame
             context.window_manager.start_status = False
 
 class ConnectButtonOperator(Operator):
@@ -190,9 +194,12 @@ class ConnectButtonOperator(Operator):
         connection_setup = ConnectionSetup()
 
     def execute(self, context):
-        self.connection_setup.connect_button_clicked(context)
+        conn = self.connection_setup
+        conn.connect_button_clicked(context)
+        conn.request_data_descriptions(conn.streaming_client, context)
         from .app_handlers import reset_to_default
         reset_to_default(context.scene)
+
         # if context.window_manager.connection_status:
         #     self.connection_setup.assign_objs(context)
         return {'FINISHED'}

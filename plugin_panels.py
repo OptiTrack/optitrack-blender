@@ -3,6 +3,7 @@ from . import connection_operator
 from .connection_operator import ConnectButtonOperator
 from bpy.types import Panel
 from .icon_viewer import IconsLoader
+from .property_definitions import CustomObjectProperties
 
 class PluginMotive(Panel):
     bl_idname = "VIEW3D_PT_plugin_motive"
@@ -15,7 +16,7 @@ class PluginMotive(Panel):
         layout = self.layout
         
         row = layout.row()
-        row.label(text = "Motive Plugin", icon_value = IconsLoader.get_icon("Motive")) 
+        row.label(text = "Motive Plugin", icon_value = IconsLoader.get_icon("Motive 1")) 
         # icon= 'POINTCLOUD_POINT')
 
 class InitialSettings(Panel):
@@ -60,10 +61,7 @@ class Connection(Panel):
             row.operator(connection_operator.ResetOperator.bl_idname, \
                          text=connection_operator.ResetOperator.bl_label, \
                             icon_value = IconsLoader.get_icon("Stop")) # icon='SNAP_FACE')
-            row = layout.row()
-            row.operator(connection_operator.RefreshAssetsOperator.bl_idname, \
-                         text=connection_operator.RefreshAssetsOperator.bl_label, \
-                            icon_value = IconsLoader.get_icon("Refresh")) # icon='FILE_REFRESH')
+
             row = layout.row()
             row.label(text="Motive Assets (ID: Name)")
             row = layout.row()
@@ -74,10 +72,15 @@ class Connection(Panel):
                 box = layout.box()
                 for key, val in obj_ls.items():
                     row = box.row()
-                    row.label(text=str(key) + ": " + str(val), icon_value = IconsLoader.get_icon("RigidBody"))
+                    row.label(text=str(key) + ": " + str(val), icon_value = IconsLoader.get_icon("Active 1"))
             else:
                 box = layout.box()
                 row = box.row()
+
+            row = layout.row()
+            row.operator(connection_operator.RefreshAssetsOperator.bl_idname, \
+                         text=connection_operator.RefreshAssetsOperator.bl_label, \
+                            icon_value = IconsLoader.get_icon("Refresh")) # icon='FILE_REFRESH')
             
             row = layout.row()
             if context.window_manager.start_status:
@@ -105,18 +108,30 @@ class AssignObjects(Panel):
 
     def draw(self, context):
         layout = self.layout
-        obj = context.object
+        # Object = context.object
+        # objprop = Object.obj_prop
 
         row = layout.row(align=True)
         row.label(text="Assign Object", icon='ARROW_LEFTRIGHT')
 
         layout.use_property_split = True
-        flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=False)
 
-        col = flow.column()
-        col.prop(text="Rigid Bodies: ")
-
-        col.separator()
+        # col = layout.column()
+        # row = col.row(align=True)
+        existing_conn = connection_operator.ConnectButtonOperator.connection_setup
+        if existing_conn.streaming_client:
+            existing_conn.get_rigid_body_dict(context)
+            # print("my_dict: ", existing_conn.rigid_bodies_motive)
+            if existing_conn.rigid_bodies_motive:
+                for obj in bpy.data.objects:
+                    objprop = obj.obj_prop
+                    row = layout.row(align=True)
+                    obj_name = obj.name
+                    row.prop(objprop, 'rigid_bodies', text=obj_name)
+        else:
+            row = layout.row(align=True)
+            row.label(text="None")
+        # col.separator()
 
         # row = layout.row(align=True)
         # if not ConnectButtonOperator.connection_setup.streaming_client.desc_dict:

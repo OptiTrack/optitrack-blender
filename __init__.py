@@ -36,7 +36,8 @@ def register():
         importlib.reload(icon_viewer)
 
     global classes
-    classes = [plugin_panels.PluginMotive, property_definitions.CustomProperties, 
+    classes = [plugin_panels.PluginMotive, property_definitions.CustomSceneProperties,
+               property_definitions.CustomObjectProperties, 
                plugin_panels.InitialSettings, plugin_panels.AssignObjects,
                plugin_panels.Connection, connection_operator.ResetOperator,
                connection_operator.ConnectButtonOperator, 
@@ -48,7 +49,9 @@ def register():
     
     icon_viewer.IconsLoader.registering_icons()
     bpy.types.Scene.init_prop = bpy.props.PointerProperty(
-        type=property_definitions.CustomProperties)
+        type=property_definitions.CustomSceneProperties)
+    bpy.types.Object.obj_prop = bpy.props.PointerProperty(
+        type=property_definitions.CustomObjectProperties)
     # bpy.types.Scene.obj_ls = bpy.props.CollectionProperty(
     #     type=property_definitions.ObjectListItem)
     bpy.app.handlers.depsgraph_update_post.append(app_handlers.object_deleted_handler)
@@ -68,6 +71,7 @@ def unregister():
 
     icon_viewer.IconsLoader.unregistering_icons()
     del bpy.types.Scene.init_prop
+    del bpy.types.Object.obj_prop
     if app_handlers.object_deleted_handler in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.remove(app_handlers.object_deleted_handler)
     if app_handlers.model_change_handler in bpy.app.handlers.depsgraph_update_pre:

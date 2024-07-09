@@ -18,9 +18,10 @@ class IconsLoader():
 
         # Loading a preview thumbnail of a file and storing in the previews collection
         icon_ls = ["Motive", "Connect", "Stop", "Refresh", "RigidBody", "Clock", \
-                   "Checkmark", "Pause", "Info"]
+                   "Checkmark", "Pause", "Info", "Active 1"]
         for icon in icon_ls:
             icons_dict.load(icon, os.path.join(my_icons_dir, icon + ".svg"), 'IMAGE')
+        icons_dict.load("Motive 1", os.path.join(my_icons_dir, 'Motive.png'), 'IMAGE')
     
         cls.icons = icons_dict
         return icons_dict
