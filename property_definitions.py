@@ -31,35 +31,27 @@ def get_id_names(self, context):
     return enum_items
 
 def update_list(self, context):
-    # current_obj = context.object # selects the active object, not enum object
-    # selected_option = obj.obj_prop.rigid_bodies
-    # print(f"Selected option for object {obj.name}: {selected_option}")
-    # obj = context.id_data
-    selected_option = self.rigid_bodies
+    id = self.rigid_bodies
     current_obj = bpy.data.objects[self.obj_name]
-    # for obj in bpy.data.objects: # creates an issue if selected_option is None
-    #     if obj.obj_prop.rigid_bodies == selected_option:
-    #         current_obj = obj
-    print(f"Selected option for object {self.obj_name}: {selected_option}")
     existing_conn = ConnectButtonOperator.connection_setup
-    if selected_option != "None":
-        if current_obj in existing_conn.rev_rigid_bodies_blender or int(selected_option) in existing_conn.rigid_bodies_blender:
-            del existing_conn.rigid_bodies_blender[existing_conn.rev_rigid_bodies_blender[current_obj]]
-            del existing_conn.rev_rigid_bodies_blender[current_obj]
-        id = int(selected_option)
-        existing_conn.rigid_bodies_blender[id] = current_obj
-        existing_conn.rev_rigid_bodies_blender[current_obj] = id
-    else:
+    if current_obj in existing_conn.rev_rigid_bodies_blender:
         del existing_conn.rigid_bodies_blender[existing_conn.rev_rigid_bodies_blender[current_obj]]
         del existing_conn.rev_rigid_bodies_blender[current_obj]
-    print("rigid_bodies_blender: ", existing_conn.rigid_bodies_blender)
-    print("rev_rigid_bodies_blender", existing_conn.rev_rigid_bodies_blender)
+
+    if id != "None":
+        id = int(id)
+        if id in existing_conn.rigid_bodies_blender:
+            del existing_conn.rev_rigid_bodies_blender[existing_conn.rigid_bodies_blender[id]]
+            del existing_conn.rigid_bodies_blender[id]
+        
+        existing_conn.rigid_bodies_blender[id] = current_obj
+        existing_conn.rev_rigid_bodies_blender[current_obj] = id
 
 class CustomObjectProperties(PropertyGroup):
     rigid_bodies : EnumProperty(name="Rigid Body", 
                                 description="Assign objects in scene to rigid body IDs",
                                 items=get_id_names,
-                                update=update_list)
+                                update=update_list, options={'SKIP_SAVE'})
     
     obj_name : StringProperty(default="", options={'SKIP_SAVE'})
 

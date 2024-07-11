@@ -59,9 +59,7 @@ class ConnectionSetup:
                                 "SetProperty,,Bone Naming Convention,FBX",
                                 "SetProperty,,Up Axis,Z-Axis"]
                 for sz_command in sz_commands:
-                    return_code = self.streaming_client.send_command(sz_command)
-
-            self.streaming_client.model_changed = self.signal_model_changed
+                    return_code = self.streaming_client.send_command(sz_command)   
 
             # Update connection state
             context.window_manager.connection_status = True
@@ -75,7 +73,8 @@ class ConnectionSetup:
                 print("exiting")
 
     def start_button_clicked(self, context):
-        if context.window_manager.connection_status:
+        if context.window_manager.connection_status: 
+                self.streaming_client.model_changed = self.signal_model_changed
                 self.streaming_client.rigid_body_listener = self.receive_rigid_body_frame
                 # Update start state
                 context.window_manager.start_status = True
@@ -89,9 +88,6 @@ class ConnectionSetup:
     
     # This is a callback function that gets connected to the NatNet client. It is called once per rigid body per frame
     def receive_rigid_body_frame(self, new_id, position, rotation):
-        print("recive_rigid_bodies_B: ", len(self.rigid_bodies_blender))
-        print("recive_rigid_bodies_M: ", len(self.rigid_bodies_motive))
-
         if new_id in self.rigid_bodies_blender:
             values = (new_id, position, rotation)
             self.l.acquire()
@@ -123,10 +119,14 @@ class ConnectionSetup:
 
     def pause_button_clicked(self, context): # Stop the data stream, but don't update the stored info        
         if self.streaming_client:
-            # self.streaming_client.shutdown()
-            # self.streaming_client = None
             self.streaming_client.rigid_body_listener = self.stop_receive_rigid_body_frame
             context.window_manager.start_status = False
+    
+    def stop_button_clicked(self, context): # Stop connection
+        if self.streaming_client:
+            self.streaming_client.shutdown()
+            self.streaming_client = None
+            context.window_manager.connection_status = False
 
 class ConnectButtonOperator(Operator):
     bl_idname = "wm.connect_button"
@@ -140,6 +140,7 @@ class ConnectButtonOperator(Operator):
     def execute(self, context):
         conn = self.connection_setup
         conn.connect_button_clicked(context)
+        print("connected")
         conn.request_data_descriptions(conn.streaming_client, context)
         from .app_handlers import reset_to_default
         reset_to_default(context.scene)
@@ -185,7 +186,7 @@ class ResetOperator(Operator):
     def execute(self, context):
         if ConnectButtonOperator.connection_setup is not None:
             existing_connection = ConnectButtonOperator.connection_setup
-            existing_connection.pause_button_clicked(context)
+            existing_connection.stop_button_clicked(context)
             existing_connection.reset_to_initial()
         
         existing_connection = None

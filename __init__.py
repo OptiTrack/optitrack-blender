@@ -73,6 +73,8 @@ def unregister():
     icon_viewer.IconsLoader.unregistering_icons()
     if app_handlers.object_deleted_handler in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.remove(app_handlers.object_deleted_handler)
+    if app_handlers.object_prop_handler in bpy.app.handlers.depsgraph_update_post:    
+        bpy.app.handlers.depsgraph_update_post.remove(app_handlers.object_prop_handler)
     if app_handlers.model_change_handler in bpy.app.handlers.depsgraph_update_pre:
         bpy.app.handlers.depsgraph_update_pre.remove(app_handlers.model_change_handler)
     bpy.app.handlers.load_post.remove(app_handlers.load_handler)
