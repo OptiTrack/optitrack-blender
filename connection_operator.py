@@ -5,8 +5,6 @@ import sys
 from threading import Lock, Event
 from queue import Queue
 from .Modified_NatNetClient import NatNetClient
-# from . import Modified_NatNetClient
-from .MoCapData import MoCapData
 
 # Define a custom property to track states
 bpy.types.WindowManager.connection_status = bpy.props.BoolProperty(name="Connection Status", default=False)
@@ -17,8 +15,6 @@ class ConnectionSetup:
         self.streaming_client = None
         self.indicate_model_changed = None
         self.rigid_bodies_motive = {}
-        # self.rigid_body_ids = []
-        # self.rigid_body_names = []
         self.rigid_bodies_blender = {} # all objects getting stored ({ID: rigid_body} pair)
         self.rev_rigid_bodies_blender = {} # ({rigid_body: ID} pair)
         self.q = Queue()
@@ -29,8 +25,6 @@ class ConnectionSetup:
         self.streaming_client = None
         self.indicate_model_changed = None
         self.rigid_bodies_motive = {}
-        # self.rigid_body_ids = []
-        # self.rigid_body_names = []
         self.rigid_bodies_blender = {}
         self.rev_rigid_bodies_blender = {} 
         self.q = Queue()
@@ -51,6 +45,7 @@ class ConnectionSetup:
 
             self.is_running = self.streaming_client.run()
             
+            # send commands to Motive to change its settings
             if self.is_running:            
                 sz_commands = ["SetProperty,,Labeled Markers,false",
                                 "SetProperty,,Unlabeled Markers,false",
@@ -91,66 +86,13 @@ class ConnectionSetup:
     def request_data_descriptions(self, s_client, context):
         # Request the model definitions
         return_code = s_client.send_modeldef_command()
-
-    def refresh_list(self, context):
-        return
-        
-    def assign_objs(self): # Assign objects in scene to rigid body IDs
-        self.l.acquire()
-        try:
-            for obj in bpy.data.objects:
-                obj_name = obj.name
-                last_underscore = obj_name.rfind('_')
-                if last_underscore != -1:
-                    obj_id = obj_name[last_underscore + 1:]
-                    obj_id = int(obj_id)
-                    self.rigid_bodies_blender[obj_id] = obj
-                    self.rev_rigid_bodies_blender[obj] = obj_id  
-                else:
-                    obj_id = None
-        finally:
-            self.l.release()
     
     # This is a callback function that gets connected to the NatNet client. It is called once per rigid body per frame
     def receive_rigid_body_frame(self, new_id, position, rotation):
-        print("recive_rigid_bodies: ", len(self.rigid_bodies_blender))
-        print("recive_rigid_body_ids: ", len(self.rigid_bodies_motive))
+        print("recive_rigid_bodies_B: ", len(self.rigid_bodies_blender))
+        print("recive_rigid_bodies_M: ", len(self.rigid_bodies_motive))
 
-        # Two cases (Assign vs Create) (scratch this)
-        if new_id not in self.rigid_bodies_blender:
-            pass
-        #     bpy.ops.object.select_all(action='DESELECT')
-            
-        #     # creating objects
-        #     if bpy.context.scene.init_prop.desired_object == 'Cube':
-        #         # create a cube
-        #         bpy.ops.mesh.primitive_cube_add(size=0.75, enter_editmode=False, align='WORLD', location=position)
-            
-        #     if bpy.context.scene.init_prop.desired_object == 'UV Sphere':
-        #         # create a UV sphere
-        #         bpy.ops.mesh.primitive_uv_sphere_add(radius=0.75/2, enter_editmode=False, align='WORLD', location=position)
-            
-        #     if bpy.context.scene.init_prop.desired_object == 'Ico Sphere':
-        #         # create an Icosphere
-        #         bpy.ops.mesh.primitive_ico_sphere_add(radius=0.75/2, enter_editmode=False, align='WORLD', location=position)
-            
-        #     if bpy.context.scene.init_prop.desired_object == 'Cylinder':
-        #         # create a cylinder
-        #         bpy.ops.mesh.primitive_cylinder_add(radius=0.75/2, depth=0.75, enter_editmode=False, align='WORLD', location=position)
-            
-        #     if bpy.context.scene.init_prop.desired_object == 'Cone':
-        #         # create a cone
-        #         bpy.ops.mesh.primitive_cone_add(radius1=0.75/2, radius2=0.0, depth=0.75, enter_editmode=False, align='WORLD', location=position)
-            
-            # my_obj = bpy.context.view_layer.objects.active
-            # my_obj.select_set(True)
-            # my_obj.name = "my_obj_%1.1d"%new_id
-            # my_obj.rotation_mode = 'QUATERNION'
-            # my_obj.rotation_quaternion = rotation
-            # self.rigid_bodies[new_id] = my_obj
-            # self.rev_rigid_bodies[my_obj] = new_id
-
-        else:
+        if new_id in self.rigid_bodies_blender:
             values = (new_id, position, rotation)
             self.l.acquire()
             try:
@@ -158,6 +100,8 @@ class ConnectionSetup:
             finally:
                 self.l.release()
                 bpy.app.timers.register(self.update_object_loc, first_interval=1/120) # freq = 120 Hz
+        else:
+            pass
 
     def update_object_loc(self):
         if self.rigid_bodies_blender:
@@ -199,9 +143,6 @@ class ConnectButtonOperator(Operator):
         conn.request_data_descriptions(conn.streaming_client, context)
         from .app_handlers import reset_to_default
         reset_to_default(context.scene)
-
-        # if context.window_manager.connection_status:
-        #     self.connection_setup.assign_objs(context)
         return {'FINISHED'}
 
 class RefreshAssetsOperator(Operator):
@@ -214,14 +155,6 @@ class RefreshAssetsOperator(Operator):
         existing_connection.request_data_descriptions(existing_connection.streaming_client, context)
         if context.window_manager.start_status:
             existing_connection.pause_button_clicked(context)
-        # existing_connection.refresh_list(context)
-        # existing_connection.refresh_list(context)
-        # existing_connection.rigid_bodies_motive = existing_connection.streaming_client.desc_dict
-        # print("Hi! Len of rigid_body_motive: ", len(existing_connection.rigid_bodies_motive))
-        # obj_ls = {}
-        # obj_ls = ConnectButtonOperator.connection_setup.get_rigid_body_ls(context)
-        # context.scene['obj_ls'] = obj_ls
-        # print("Hi!!", len(context.scene['obj_ls']))
         return {'FINISHED'}
 
 

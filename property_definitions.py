@@ -1,7 +1,7 @@
 import bpy
 from .connection_operator import ConnectButtonOperator
-from bpy.props import StringProperty, IntProperty, FloatProperty, EnumProperty, BoolProperty, CollectionProperty
-from bpy.types import PropertyGroup, Object, Scene
+from bpy.props import StringProperty, IntProperty, FloatProperty, EnumProperty, BoolProperty
+from bpy.types import PropertyGroup
 
 def update_unit_settings(self, context):
     initprop = bpy.context.scene.init_prop
@@ -26,29 +26,42 @@ def get_id_names(self, context):
         for id, name in existing_connection.rigid_bodies_motive.items():
             id = str(id)
             word = id + ": " + name
-            enum_items.append((id, word, word))
+            enum_items.append((id, word, word)) # (identifier, name, description)
     
     return enum_items
 
 def update_list(self, context):
-    # operator = bpy.context.window_manager.operators.active
-    # result_dict = operator.rigid_bodies_motive
-    # print("resulting dict: ", len(result_dict))
-    obj = context.object
-    selected_option = obj.obj_prop.rigid_bodies
-    print(f"Selected option for object {obj.name}: {selected_option}")
+    # current_obj = context.object # selects the active object, not enum object
+    # selected_option = obj.obj_prop.rigid_bodies
+    # print(f"Selected option for object {obj.name}: {selected_option}")
+    # obj = context.id_data
+    selected_option = self.rigid_bodies
+    current_obj = bpy.data.objects[self.obj_name]
+    # for obj in bpy.data.objects: # creates an issue if selected_option is None
+    #     if obj.obj_prop.rigid_bodies == selected_option:
+    #         current_obj = obj
+    print(f"Selected option for object {self.obj_name}: {selected_option}")
     existing_conn = ConnectButtonOperator.connection_setup
-    if selected_option is not None:
+    if selected_option != "None":
+        if current_obj in existing_conn.rev_rigid_bodies_blender or int(selected_option) in existing_conn.rigid_bodies_blender:
+            del existing_conn.rigid_bodies_blender[existing_conn.rev_rigid_bodies_blender[current_obj]]
+            del existing_conn.rev_rigid_bodies_blender[current_obj]
         id = int(selected_option)
-        existing_conn.rigid_bodies_blender[id] = obj
-        existing_conn.rev_rigid_bodies_blender[obj] = id
+        existing_conn.rigid_bodies_blender[id] = current_obj
+        existing_conn.rev_rigid_bodies_blender[current_obj] = id
+    else:
+        del existing_conn.rigid_bodies_blender[existing_conn.rev_rigid_bodies_blender[current_obj]]
+        del existing_conn.rev_rigid_bodies_blender[current_obj]
     print("rigid_bodies_blender: ", existing_conn.rigid_bodies_blender)
+    print("rev_rigid_bodies_blender", existing_conn.rev_rigid_bodies_blender)
 
 class CustomObjectProperties(PropertyGroup):
     rigid_bodies : EnumProperty(name="Rigid Body", 
                                 description="Assign objects in scene to rigid body IDs",
                                 items=get_id_names,
                                 update=update_list)
+    
+    obj_name : StringProperty(default="", options={'SKIP_SAVE'})
 
 class CustomSceneProperties(PropertyGroup):
     server_address : StringProperty(name="Server IP",
@@ -73,20 +86,6 @@ class CustomSceneProperties(PropertyGroup):
     fps_value : IntProperty(name="Frame Rate", default=120, 
                                       min=1, max=1000)
     
-    # desired_object : EnumProperty(name="Object",
-    #                                     description="shape of rigid body of your choice",
-    #                                     default='UV Sphere',
-    #                                     items=[('UV Sphere', "UV Sphere", ""),
-    #                                             ('Cube', "Cube", ""),
-    #                                            ('Ico Sphere', "Ico Sphere", ""),
-    #                                            ('Cylinder', "Cylinder", ""),
-    #                                            ('Cone', "Cone", "")
-    #                                            ])
-    
     default_settings: BoolProperty(name="Keep configuration", 
                                    description="Configure scene to above settings",
                                    default=True)
-
-# class ObjectListItem(PropertyGroup):
-#     key: IntProperty(name="Object IDs", description="Rigid Body IDs", default=-1)
-#     val: StringProperty(name="Object Names", description="Rigid Body Names", default="")

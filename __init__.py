@@ -52,26 +52,25 @@ def register():
         type=property_definitions.CustomSceneProperties)
     bpy.types.Object.obj_prop = bpy.props.PointerProperty(
         type=property_definitions.CustomObjectProperties)
-    # bpy.types.Scene.obj_ls = bpy.props.CollectionProperty(
-    #     type=property_definitions.ObjectListItem)
     bpy.app.handlers.depsgraph_update_post.append(app_handlers.object_deleted_handler)
+    bpy.app.handlers.depsgraph_update_post.append(app_handlers.object_prop_handler)
     bpy.app.handlers.depsgraph_update_pre.append(app_handlers.model_change_handler)
     bpy.app.handlers.load_post.append(app_handlers.load_handler)
 
 def unregister():
-    from . import plugin_panels
-    from . import connection_operator
-    from . import Modified_NatNetClient
-    from . import property_definitions
+    # from . import plugin_panels
+    # from . import connection_operator
+    # from . import Modified_NatNetClient
+    # from . import property_definitions
     from . import app_handlers
     from . import icon_viewer
     
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
 
-    icon_viewer.IconsLoader.unregistering_icons()
     del bpy.types.Scene.init_prop
     del bpy.types.Object.obj_prop
+    icon_viewer.IconsLoader.unregistering_icons()
     if app_handlers.object_deleted_handler in bpy.app.handlers.depsgraph_update_post:
         bpy.app.handlers.depsgraph_update_post.remove(app_handlers.object_deleted_handler)
     if app_handlers.model_change_handler in bpy.app.handlers.depsgraph_update_pre:

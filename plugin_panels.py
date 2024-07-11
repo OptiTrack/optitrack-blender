@@ -3,7 +3,6 @@ from . import connection_operator
 from .connection_operator import ConnectButtonOperator
 from bpy.types import Panel
 from .icon_viewer import IconsLoader
-from .property_definitions import CustomObjectProperties
 
 class PluginMotive(Panel):
     bl_idname = "VIEW3D_PT_plugin_motive"
@@ -16,8 +15,7 @@ class PluginMotive(Panel):
         layout = self.layout
         
         row = layout.row()
-        row.label(text = "Motive Plugin", icon_value = IconsLoader.get_icon("Motive 1")) 
-        # icon= 'POINTCLOUD_POINT')
+        row.label(text = "Motive Plugin", icon_value = IconsLoader.get_icon("Motive"))
 
 class InitialSettings(Panel):
     bl_idname = "VIEW3D_PT_initial_settings"
@@ -26,7 +24,6 @@ class InitialSettings(Panel):
     bl_region_type = 'UI'
     bl_category = 'Motive'
     bl_parent_id = 'VIEW3D_PT_plugin_motive'
-
 
     def draw(self, context):
         layout = self.layout
@@ -65,14 +62,12 @@ class Connection(Panel):
             row = layout.row()
             row.label(text="Motive Assets (ID: Name)")
             row = layout.row()
-            # row.template_list("UI_LIST", "Object List", context.scene, "obj_ls", rows=1)
-            # obj_ls = context.scene.get('obj_ls', {})
             obj_ls = ConnectButtonOperator.connection_setup.streaming_client.desc_dict
             if obj_ls:
                 box = layout.box()
                 for key, val in obj_ls.items():
                     row = box.row()
-                    row.label(text=str(key) + ": " + str(val), icon_value = IconsLoader.get_icon("Active 1"))
+                    row.label(text=str(key) + ": " + str(val), icon_value = IconsLoader.get_icon("RigidBody"))
             else:
                 box = layout.box()
                 row = box.row()
@@ -91,7 +86,7 @@ class Connection(Panel):
             else:
                 row.operator(connection_operator.StartButtonOperator.bl_idname, \
                              text=connection_operator.StartButtonOperator.bl_label, \
-                                icon_value = IconsLoader.get_icon("Clock")) # icon= 'TEMP')
+                                icon_value = IconsLoader.get_icon("Awaiting")) # icon= 'TEMP')
         else:
             layout.operator(connection_operator.ConnectButtonOperator.bl_idname, \
                             text=connection_operator.ConnectButtonOperator.bl_label, \
@@ -108,20 +103,15 @@ class AssignObjects(Panel):
 
     def draw(self, context):
         layout = self.layout
-        # Object = context.object
-        # objprop = Object.obj_prop
 
         row = layout.row(align=True)
         row.label(text="Assign Object", icon='ARROW_LEFTRIGHT')
 
         layout.use_property_split = True
 
-        # col = layout.column()
-        # row = col.row(align=True)
         existing_conn = connection_operator.ConnectButtonOperator.connection_setup
         if existing_conn.streaming_client:
             existing_conn.get_rigid_body_dict(context)
-            # print("my_dict: ", existing_conn.rigid_bodies_motive)
             if existing_conn.rigid_bodies_motive:
                 for obj in bpy.data.objects:
                     objprop = obj.obj_prop
@@ -131,13 +121,6 @@ class AssignObjects(Panel):
         else:
             row = layout.row(align=True)
             row.label(text="None")
-        # col.separator()
-
-        # row = layout.row(align=True)
-        # if not ConnectButtonOperator.connection_setup.streaming_client.desc_dict:
-        #     row.label(text="None")
-        # else:
-        #     row.prop(context.object, )    
 
 class Info(Panel):
     bl_idname = "VIEW3D_PT_info"

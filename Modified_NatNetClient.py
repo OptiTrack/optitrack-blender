@@ -1,4 +1,3 @@
-# only rigid bodies
 #Copyright © 2018 Naturalpoint
 #
 #Licensed under the Apache License, Version 2.0 (the "License")
@@ -1568,11 +1567,6 @@ class NatNetClient:
             print("MoCap Frame: %d\n"%(mocap_data.prefix_data.frame_number))
             # get a string version of the data for output
             mocap_data_str=mocap_data.get_as_string()
-            # offset_r, rigid_body_data = self.__unpack_rigid_body_data(data[offset:], packet_size, \
-            # major, minor)
-            # rigid_body_str = rigid_body_data.get_as_string()
-            # rigid_body_data = mocap_data.rigid_body_data
-            # print("%s\n"%rigid_body_data)
             if print_level == 0:
                 print("%s\n"%mocap_data_str)
 
@@ -1586,14 +1580,6 @@ class NatNetClient:
 
             rigid_body_dict = {rigid_body.id_num: DataDescriptions.get_as_string(rigid_body.sz_name) for \
                                rigid_body in data_descs.rigid_body_list}
-            # for key, val in rigid_body_dict.items():
-            #     print("MODELDEF: ", key, val)
-             
-            # print("Data Descriptions:\n")
-            # # get a string version of the data for output
-            # data_descs_str=data_descs.get_as_string()
-            # if print_level>0:
-            #     print("%s\n"%(data_descs_str))
 
         elif message_id == self.NAT_SERVERINFO :
             trace( "Message ID  : %3.1d NAT_SERVERINFO"% message_id )
@@ -1792,15 +1778,6 @@ class NatNetClient:
         # Get NatNet and server versions
         self.send_request(self.command_socket, self.NAT_CONNECT, "",  (self.server_ip_address, \
                                                                        self.command_port) )
-
-
-        ##Example Commands
-        ## Get NatNet and server versions
-        #self.send_request(self.command_socket, self.NAT_CONNECT, "", (self.server_ip_address, \
-        # self.command_port) )
-        ## Request the model definitions
-        #self.send_request(self.command_socket, self.NAT_REQUEST_MODELDEF, "",  (self.server_ip_address,\
-        #  self.command_port) )
         return True
 
     def shutdown(self):

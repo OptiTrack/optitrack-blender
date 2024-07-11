@@ -1,8 +1,7 @@
 import bpy
 from bpy.app.handlers import persistent
 from .connection_operator import ConnectButtonOperator
-from queue import Queue
-from threading import Lock
+from .property_definitions import CustomObjectProperties
 
 def reset_to_default(scene):
     for scene in bpy.data.scenes:
@@ -15,9 +14,15 @@ def reset_to_default(scene):
         
         if initprop.default_settings and initprop.fps_value == initprop.bl_rna.properties['fps_value'].default:
             initprop.fps_value = initprop.bl_rna.properties['fps_value'].default
+
+def object_prop_handler(scene):
+    for obj in scene.objects:
+        if not hasattr(obj, "obj_prop"):
+            obj.obj_prop = bpy.props.PointerProperty(type=CustomObjectProperties)
         
-        # if initprop.default_settings and initprop.desired_object == initprop.bl_rna.properties['default_settings'].default:
-        #     initprop.desired_object = initprop.bl_rna.properties['default_settings'].default
+        if hasattr(obj, "obj_prop"):
+            obj.obj_prop.obj_name = obj.name
+            # print("obj prop: ", obj.obj_prop.obj_name)
 
 @persistent
 def object_deleted_handler(scene):
@@ -41,23 +46,18 @@ def object_deleted_handler(scene):
 def model_change_handler(scene):
     if ConnectButtonOperator.connection_setup is not None:  
         existing_connection = ConnectButtonOperator.connection_setup
-        if existing_connection.streaming_client is not None:
-            # print("existing indicate: ", existing_connection.indicate_model_changed)        
+        if existing_connection.streaming_client is not None:     
             if existing_connection.indicate_model_changed == True:
-                print("False to True!")
                 bpy.context.window_manager.connection_status = False
                 existing_connection.streaming_client.shutdown()
-                existing_connection.reset_to_initial()    
-
-                # print("Initial values: ")
-                # print("rigid_body_ids", len(existing_connection.rigid_body_ids))
-                # print("rigid_bodies", len(existing_connection.rigid_bodies))
+                existing_connection.reset_to_initial()
                 existing_connection = None
     
                 for attr in dir(bpy.data):
                     if "bpy_prop_collection" in str(type(getattr(bpy.data, attr))):
                         for obj in getattr(bpy.data, attr):
                             for custom_prop_name in list(obj.keys()):
+                                print(f"Deleted custom object property '{custom_prop_name}'")
                                 del obj[custom_prop_name]
 
                 # Deselect all objects
@@ -88,4 +88,3 @@ def load_handler(dummy):
 
             # Deselect all objects
             bpy.ops.object.select_all(action='DESELECT')
-
