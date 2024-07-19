@@ -39,6 +39,7 @@ class ConnectionSetup:
         if self.streaming_client is None:
             optionsDict = {'clientAddress': bpy.context.scene.init_prop.client_address, 'serverAddress': bpy.context.scene.init_prop.server_address, 'use_multicast': True}
             self.streaming_client = NatNetClient()
+            # return_code = self.streaming_client.send_command("SetProperty,,Transmission Type,Multicast")
             self.streaming_client.set_client_address(optionsDict["clientAddress"])
             self.streaming_client.set_server_address(optionsDict["serverAddress"])
             self.streaming_client.set_use_multicast(optionsDict["use_multicast"])
@@ -47,7 +48,8 @@ class ConnectionSetup:
             
             # send commands to Motive to change its settings
             if self.is_running:            
-                sz_commands = ["SetProperty,,Labeled Markers,false",
+                sz_commands = [
+                                "SetProperty,,Labeled Markers,false",
                                 "SetProperty,,Unlabeled Markers,false",
                                 "SetProperty,,Asset Markers,false",
                                 "SetProperty,,Rigid Bodies,true"
@@ -59,7 +61,9 @@ class ConnectionSetup:
                                 "SetProperty,,Bone Naming Convention,FBX",
                                 "SetProperty,,Up Axis,Z-Axis"]
                 for sz_command in sz_commands:
-                    return_code = self.streaming_client.send_command(sz_command)   
+                    return_code = self.streaming_client.send_command(sz_command)
+
+                # return_code = self.streaming_client.send_command("SetProperty,,Skeletons,false")  
 
             # Update connection state
             context.window_manager.connection_status = True

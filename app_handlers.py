@@ -15,13 +15,12 @@ def reset_to_default(scene):
         if initprop.default_settings and initprop.fps_value == initprop.bl_rna.properties['fps_value'].default:
             initprop.fps_value = initprop.bl_rna.properties['fps_value'].default
 
+@persistent
 def object_prop_handler(scene):
     for obj in scene.objects:
         if not hasattr(obj, "obj_prop"):
             obj.obj_prop = bpy.props.PointerProperty(type=CustomObjectProperties)
-        
-        if hasattr(obj, "obj_prop"):
-            obj.obj_prop.obj_name = obj.name
+        obj.obj_prop.obj_name = obj.name
 
 @persistent
 def object_deleted_handler(scene):

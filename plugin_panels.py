@@ -33,6 +33,12 @@ class InitialSettings(Panel):
         box = layout.box()
         box.prop(initprop, 'server_address')
         box.prop(initprop, 'client_address')
+        box2 = box.box()
+        row = box2.row(align=True)
+        row.label(text="Don't forget to set Motive's")
+        row = box2.row(align=True)
+        row.scale_x = 250
+        row.label(text="Transmission Type to Multicast.")
         box.prop(initprop, 'unit_setting')
         box.prop(initprop, 'scale')
         box.prop(initprop, 'fps_value')
@@ -110,14 +116,16 @@ class AssignObjects(Panel):
         layout.use_property_split = True
 
         existing_conn = connection_operator.ConnectButtonOperator.connection_setup
+        bad_obj_types = ['CAMERA', 'LIGHT']
         if existing_conn.streaming_client:
             existing_conn.get_rigid_body_dict(context)
             if existing_conn.rigid_bodies_motive:
                 for obj in bpy.data.objects:
-                    objprop = obj.obj_prop
-                    row = layout.row(align=True)
-                    obj_name = obj.name
-                    row.prop(objprop, 'rigid_bodies', text=obj_name)
+                    if obj.type not in bad_obj_types:
+                        objprop = obj.obj_prop
+                        row = layout.row(align=True)
+                        obj_name = obj.name
+                        row.prop(objprop, 'rigid_bodies', text=obj_name)
         else:
             row = layout.row(align=True)
             row.label(text="None")
