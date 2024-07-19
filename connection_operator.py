@@ -115,6 +115,7 @@ class ConnectionSetup:
                         my_obj.rotation_mode = 'QUATERNION'
                         my_obj.rotation_quaternion = q_val[2]
                     except KeyError:
+                        # if object id updated in middle of the running .tak
                         pass
             finally:
                 self.l.release()
