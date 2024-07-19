@@ -109,10 +109,13 @@ class ConnectionSetup:
             try:
                 if not self.q.empty(): 
                     q_val = self.q.get()
-                    my_obj = self.rigid_bodies_blender[q_val[0]] # new_id
-                    my_obj.location = q_val[1]
-                    my_obj.rotation_mode = 'QUATERNION'
-                    my_obj.rotation_quaternion = q_val[2]
+                    try:
+                        my_obj = self.rigid_bodies_blender[q_val[0]] # new_id
+                        my_obj.location = q_val[1]
+                        my_obj.rotation_mode = 'QUATERNION'
+                        my_obj.rotation_quaternion = q_val[2]
+                    except KeyError:
+                        pass
             finally:
                 self.l.release()
         else:
