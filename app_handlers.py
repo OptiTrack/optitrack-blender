@@ -1,6 +1,6 @@
 import bpy
 from bpy.app.handlers import persistent
-from .connection_operator import ConnectButtonOperator
+from .plugin_operators import ConnectButtonOperator
 from .property_definitions import CustomObjectProperties
 
 def reset_to_default(scene):

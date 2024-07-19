@@ -170,7 +170,7 @@ class RefreshAssetsOperator(Operator):
 class StartButtonOperator(Operator):
     bl_idname = "wm.start_button"
     bl_description = "Start receiving the data for every frame"
-    bl_label = "Awaiting"
+    bl_label = "Start Receiver"
 
     def execute(self, context):
         ConnectButtonOperator.connection_setup.start_button_clicked(context)

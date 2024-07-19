@@ -18,7 +18,7 @@ if "bpy" not in locals():
 # Register and unregister classes
 def register():
     from . import plugin_panels
-    from . import connection_operator
+    from . import plugin_operators
     from . import Modified_NatNetClient
     from . import property_definitions
     from . import app_handlers
@@ -29,7 +29,7 @@ def register():
     else:
         import importlib
         importlib.reload(plugin_panels)
-        importlib.reload(connection_operator)
+        importlib.reload(plugin_operators)
         importlib.reload(Modified_NatNetClient)
         importlib.reload(property_definitions)
         importlib.reload(app_handlers)
@@ -39,11 +39,11 @@ def register():
     classes = [plugin_panels.PluginMotive, property_definitions.CustomSceneProperties,
                property_definitions.CustomObjectProperties, 
                plugin_panels.InitialSettings, plugin_panels.AssignObjects,
-               plugin_panels.Connection, connection_operator.ResetOperator,
-               connection_operator.ConnectButtonOperator, 
-               connection_operator.RefreshAssetsOperator,
-               connection_operator.StartButtonOperator,
-               connection_operator.PauseButtonOperator, plugin_panels.Info]
+               plugin_panels.Connection, plugin_operators.ResetOperator,
+               plugin_operators.ConnectButtonOperator, 
+               plugin_operators.RefreshAssetsOperator,
+               plugin_operators.StartButtonOperator,
+               plugin_operators.PauseButtonOperator, plugin_panels.Info]
     for cls in classes:
         bpy.utils.register_class(cls)
     
@@ -59,7 +59,7 @@ def register():
 
 def unregister():
     # from . import plugin_panels
-    # from . import connection_operator
+    # from . import plugin_operators
     # from . import Modified_NatNetClient
     # from . import property_definitions
     from . import app_handlers

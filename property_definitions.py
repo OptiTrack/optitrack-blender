@@ -1,5 +1,5 @@
 import bpy
-from .connection_operator import ConnectButtonOperator
+from .plugin_operators import ConnectButtonOperator
 from bpy.props import StringProperty, IntProperty, FloatProperty, EnumProperty, BoolProperty
 from bpy.types import PropertyGroup
 

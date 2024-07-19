@@ -1,6 +1,6 @@
 import bpy
-from . import connection_operator
-from .connection_operator import ConnectButtonOperator
+from . import plugin_operators
+from .plugin_operators import ConnectButtonOperator
 from bpy.types import Panel
 from .icon_viewer import IconsLoader
 
@@ -61,8 +61,8 @@ class Connection(Panel):
         
         row = layout.row(align=True)
         if context.window_manager.connection_status:
-            row.operator(connection_operator.ResetOperator.bl_idname, \
-                         text=connection_operator.ResetOperator.bl_label, \
+            row.operator(plugin_operators.ResetOperator.bl_idname, \
+                         text=plugin_operators.ResetOperator.bl_label, \
                             icon_value = IconsLoader.get_icon("Stop")) # icon='SNAP_FACE')
 
             row = layout.row()
@@ -79,23 +79,23 @@ class Connection(Panel):
                 row = box.row()
 
             row = layout.row()
-            row.operator(connection_operator.RefreshAssetsOperator.bl_idname, \
-                         text=connection_operator.RefreshAssetsOperator.bl_label, \
+            row.operator(plugin_operators.RefreshAssetsOperator.bl_idname, \
+                         text=plugin_operators.RefreshAssetsOperator.bl_label, \
                             icon_value = IconsLoader.get_icon("Refresh")) # icon='FILE_REFRESH')
             
             row = layout.row()
             if context.window_manager.start_status:
                 row.label(text="Receiving", icon_value = IconsLoader.get_icon("Checkmark")) # icon='CHECKMARK')
-                row.operator(connection_operator.PauseButtonOperator.bl_idname, \
-                             text=connection_operator.PauseButtonOperator.bl_label, \
+                row.operator(plugin_operators.PauseButtonOperator.bl_idname, \
+                             text=plugin_operators.PauseButtonOperator.bl_label, \
                                 icon_value = IconsLoader.get_icon("Pause")) # icon='PAUSE')
             else:
-                row.operator(connection_operator.StartButtonOperator.bl_idname, \
-                             text=connection_operator.StartButtonOperator.bl_label, \
+                row.operator(plugin_operators.StartButtonOperator.bl_idname, \
+                             text=plugin_operators.StartButtonOperator.bl_label, \
                                 icon_value = IconsLoader.get_icon("Awaiting")) # icon= 'TEMP')
         else:
-            layout.operator(connection_operator.ConnectButtonOperator.bl_idname, \
-                            text=connection_operator.ConnectButtonOperator.bl_label, \
+            layout.operator(plugin_operators.ConnectButtonOperator.bl_idname, \
+                            text=plugin_operators.ConnectButtonOperator.bl_label, \
                                 icon_value = IconsLoader.get_icon("Connect")) # icon= 'TRIA_RIGHT_BAR')
 
 # Object Properties Pane
@@ -115,7 +115,7 @@ class AssignObjects(Panel):
 
         layout.use_property_split = True
 
-        existing_conn = connection_operator.ConnectButtonOperator.connection_setup
+        existing_conn = plugin_operators.ConnectButtonOperator.connection_setup
         bad_obj_types = ['CAMERA', 'LIGHT']
         if existing_conn.streaming_client:
             existing_conn.get_rigid_body_dict(context)
