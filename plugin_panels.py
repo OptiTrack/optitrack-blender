@@ -35,10 +35,10 @@ class InitialSettings(Panel):
         box.prop(initprop, 'client_address')
         box2 = box.box()
         row = box2.row(align=True)
-        row.label(text="Don't forget to set Motive's")
+        row.label(text="Set Transmission Type to")
         row = box2.row(align=True)
         row.scale_x = 250
-        row.label(text="Transmission Type to Multicast.")
+        row.label(text="Multicast in Streaming Settings.")
         box.prop(initprop, 'unit_setting')
         box.prop(initprop, 'scale')
         box.prop(initprop, 'fps_value')
@@ -143,7 +143,7 @@ class Info(Panel):
         layout = self.layout
         
         row = layout.row()
-        row.label(text = "INFO ABOUT THE PLUGIN", icon_value = IconsLoader.get_icon("Info")) # icon= 'INFO')
+        row.label(text = "OptiTrack Documentation", icon_value = IconsLoader.get_icon("Info")) # icon= 'INFO')
         row = layout.row()
         row.operator("wm.url_open", text = "Website").url = "https://optitrack.com"
         row.operator("wm.url_open", text = "Documentation").url = "https://docs.optitrack.com/"
