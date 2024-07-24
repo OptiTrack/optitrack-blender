@@ -1,5 +1,5 @@
 import bpy
-import time
+import ipaddress
 from bpy.types import Operator
 import sys
 from threading import Lock, Event
@@ -34,22 +34,17 @@ class ConnectionSetup:
     def signal_model_changed(self, tracked_model_changed): # flag to keep checking if Motive .tak changed
         self.indicate_model_changed = tracked_model_changed
 
-    def connect_button_clicked(self, context): 
-        # Initialize streaming client       
-        if self.streaming_client is None:
-            optionsDict = {'clientAddress': bpy.context.scene.init_prop.client_address, 'serverAddress': bpy.context.scene.init_prop.server_address, 'use_multicast': True}
-            self.streaming_client = NatNetClient()
-            # return_code = self.streaming_client.send_command("SetProperty,,Transmission Type,Multicast")
-            self.streaming_client.set_client_address(optionsDict["clientAddress"])
-            self.streaming_client.set_server_address(optionsDict["serverAddress"])
-            self.streaming_client.set_use_multicast(optionsDict["use_multicast"])
+    def connect_button_clicked(self, dict, context):
+        if self.streaming_client is not None:
+            self.streaming_client.set_client_address(dict["clientAddress"])
+            self.streaming_client.set_server_address(dict["serverAddress"])
+            self.streaming_client.set_use_multicast(dict["use_multicast"])
 
             self.is_running = self.streaming_client.run()
             
             # send commands to Motive to change its settings
             if self.is_running:            
-                sz_commands = [
-                                "SetProperty,,Labeled Markers,false",
+                sz_commands = [ "SetProperty,,Labeled Markers,false",
                                 "SetProperty,,Unlabeled Markers,false",
                                 "SetProperty,,Asset Markers,false",
                                 "SetProperty,,Rigid Bodies,true"
@@ -62,11 +57,11 @@ class ConnectionSetup:
                                 "SetProperty,,Up Axis,Z-Axis"]
                 for sz_command in sz_commands:
                     return_code = self.streaming_client.send_command(sz_command)
-
-                # return_code = self.streaming_client.send_command("SetProperty,,Skeletons,false")  
+                return_code = self.streaming_client.send_command("SetProperty,,Skeletons,false")
 
             # Update connection state
             context.window_manager.connection_status = True
+        
         else:
             context.window_manager.connection_status = False
             try:
@@ -141,13 +136,42 @@ class ConnectButtonOperator(Operator):
     bl_description = "Establish the connection"
     bl_label = "Start Connection"
 
+    # def server_error(self, context):
+        
+    # def client_error(self, context):
+        
+
     connection_setup = None
     if connection_setup is None:
         connection_setup = ConnectionSetup()
 
     def execute(self, context):
         conn = self.connection_setup
-        conn.connect_button_clicked(context)
+        # Initialize streaming client       
+        if conn.streaming_client is None:
+            optionsDict = {'clientAddress': bpy.context.scene.init_prop.client_address, \
+                           'serverAddress': bpy.context.scene.init_prop.server_address, \
+                            'use_multicast': True}
+            
+            # check the ips
+            try:
+                ipaddress.ip_address(optionsDict["clientAddress"])
+            except ValueError:
+                self.report({'ERROR'}, "Client IP is not valid")
+                # context.window_manager.popup_menu(self.client_error(context))
+                conn.reset_to_initial()
+                return {'CANCELLED'}
+        
+            try:
+                ipaddress.ip_address(optionsDict["serverAddress"])
+            except ValueError:
+                self.report({'ERROR'}, "Server IP is not valid")
+                # context.window_manager.popup_menu(self.server_error(context))
+                conn.reset_to_initial()
+                return {'CANCELLED'}
+            
+            conn.streaming_client = NatNetClient()
+        conn.connect_button_clicked(optionsDict, context)
         print("connected")
         conn.request_data_descriptions(conn.streaming_client, context)
         from .app_handlers import reset_to_default
