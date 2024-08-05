@@ -293,7 +293,6 @@ class RigidBodyData:
     def __init__(self):
         self.rigid_body_list=[]
 
-
     def add_rigid_body(self, rigid_body):
         self.rigid_body_list.append(copy.deepcopy(rigid_body))
         return len(self.rigid_body_list)

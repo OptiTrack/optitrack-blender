@@ -93,6 +93,17 @@ class Connection(Panel):
                 row.operator(plugin_operators.StartButtonOperator.bl_idname, \
                              text=plugin_operators.StartButtonOperator.bl_label, \
                                 icon_value = IconsLoader.get_icon("Awaiting")) # icon= 'TEMP')
+            
+            # row = layout.row()
+            # if context.window_manager.record_status:
+            #     row.label(text="Recording", icon_value = IconsLoader.get_icon("Checkmark")) # icon='CHECKMARK')
+            #     row.operator(plugin_operators.StopRecordButtonOperator.bl_idname, \
+            #                  text=plugin_operators.StopRecordButtonOperator.bl_label, \
+            #                     icon_value = IconsLoader.get_icon("Pause")) # icon='PAUSE')
+            # else:
+            #     row.operator(plugin_operators.StartRecordButtonOperator.bl_idname, \
+            #                  text=plugin_operators.StartRecordButtonOperator.bl_label, \
+            #                     icon_value = IconsLoader.get_icon("Awaiting")) # icon= 'TEMP')
         else:
             layout.operator(plugin_operators.ConnectButtonOperator.bl_idname, \
                             text=plugin_operators.ConnectButtonOperator.bl_label, \

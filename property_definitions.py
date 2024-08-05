@@ -81,3 +81,5 @@ class CustomSceneProperties(PropertyGroup):
     default_settings: BoolProperty(name="Keep configuration", 
                                    description="Configure scene to above settings",
                                    default=True)
+    
+    # record: BoolProperty(name="Record", description="Record animation", default=True)

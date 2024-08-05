@@ -43,7 +43,9 @@ def register():
                plugin_operators.ConnectButtonOperator, 
                plugin_operators.RefreshAssetsOperator,
                plugin_operators.StartButtonOperator,
-               plugin_operators.PauseButtonOperator, plugin_panels.Info]
+               plugin_operators.PauseButtonOperator,
+               plugin_panels.Info]
+    # plugin_operators.StartRecordButtonOperator, plugin_operators.StopRecordButtonOperator,
     for cls in classes:
         bpy.utils.register_class(cls)
     

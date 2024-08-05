@@ -9,6 +9,7 @@ from .Modified_NatNetClient import NatNetClient
 # Define a custom property to track states
 bpy.types.WindowManager.connection_status = bpy.props.BoolProperty(name="Connection Status", default=False)
 bpy.types.WindowManager.start_status = bpy.props.BoolProperty(name="Start Status", default=False)
+bpy.types.WindowManager.record_status = bpy.props.BoolProperty(name="Record Status", default=False)
 
 class ConnectionSetup:
     def __init__(self):
@@ -57,7 +58,7 @@ class ConnectionSetup:
                                 "SetProperty,,Up Axis,Z-Axis"]
                 for sz_command in sz_commands:
                     return_code = self.streaming_client.send_command(sz_command)
-                return_code = self.streaming_client.send_command("SetProperty,,Skeletons,false")
+                # return_code = self.streaming_client.send_command("SetProperty,,Skeletons,false")
 
             # Update connection state
             context.window_manager.connection_status = True
@@ -86,9 +87,9 @@ class ConnectionSetup:
         return_code = s_client.send_modeldef_command()
     
     # This is a callback function that gets connected to the NatNet client. It is called once per rigid body per frame
-    def receive_rigid_body_frame(self, new_id, position, rotation):
+    def receive_rigid_body_frame(self, new_id, position, rotation, frame_number):
         if new_id in self.rigid_bodies_blender:
-            values = (new_id, position, rotation)
+            values = (new_id, position, rotation, frame_number)
             self.l.acquire()
             try:
                 self.q.put(values)
@@ -107,8 +108,15 @@ class ConnectionSetup:
                     try:
                         my_obj = self.rigid_bodies_blender[q_val[0]] # new_id
                         my_obj.location = q_val[1]
+                        # if context.window_manager.record_status == True:
+                        # print("loc: ", my_obj, my_obj.location, q_val[3])
+                        if bpy.context.scene.frame_end < q_val[3]:
+                            bpy.context.scene.frame_end = q_val[3]
+                        my_obj.keyframe_insert(data_path="location", frame=q_val[3])
                         my_obj.rotation_mode = 'QUATERNION'
                         my_obj.rotation_quaternion = q_val[2]
+                        # if context.window_manager.record_status == True:
+                        my_obj.keyframe_insert(data_path="rotation_quaternion",frame=q_val[3])
                     except KeyError:
                         # if object id updated in middle of the running .tak
                         pass
@@ -117,7 +125,7 @@ class ConnectionSetup:
         else:
             pass
     
-    def stop_receive_rigid_body_frame(self, new_id, position, rotation):
+    def stop_receive_rigid_body_frame(self, new_id, position, rotation, frame_number):
         pass
 
     def pause_button_clicked(self, context): # Stop the data stream, but don't update the stored info        
@@ -134,12 +142,7 @@ class ConnectionSetup:
 class ConnectButtonOperator(Operator):
     bl_idname = "wm.connect_button"
     bl_description = "Establish the connection"
-    bl_label = "Start Connection"
-
-    # def server_error(self, context):
-        
-    # def client_error(self, context):
-        
+    bl_label = "Start Connection"   
 
     connection_setup = None
     if connection_setup is None:
@@ -158,7 +161,6 @@ class ConnectButtonOperator(Operator):
                 ipaddress.ip_address(optionsDict["clientAddress"])
             except ValueError:
                 self.report({'ERROR'}, "Client IP is not valid")
-                # context.window_manager.popup_menu(self.client_error(context))
                 conn.reset_to_initial()
                 return {'CANCELLED'}
         
@@ -166,16 +168,22 @@ class ConnectButtonOperator(Operator):
                 ipaddress.ip_address(optionsDict["serverAddress"])
             except ValueError:
                 self.report({'ERROR'}, "Server IP is not valid")
-                # context.window_manager.popup_menu(self.server_error(context))
                 conn.reset_to_initial()
                 return {'CANCELLED'}
             
             conn.streaming_client = NatNetClient()
-        conn.connect_button_clicked(optionsDict, context)
-        print("connected")
-        conn.request_data_descriptions(conn.streaming_client, context)
-        from .app_handlers import reset_to_default
-        reset_to_default(context.scene)
+        try:
+            conn.connect_button_clicked(optionsDict, context)
+            conn.request_data_descriptions(conn.streaming_client, context)
+            print("connected")
+            from .app_handlers import reset_to_default
+            reset_to_default(context.scene)
+        except Exception as e:
+            conn.streaming_client = None
+            context.window_manager.connection_status = False
+            self.report({'ERROR'}, f"Your Motive is not set to Multicast")
+            return {'CANCELLED'}
+    
         return {'FINISHED'}
 
 class RefreshAssetsOperator(Operator):
@@ -210,6 +218,26 @@ class PauseButtonOperator(Operator):
             ConnectButtonOperator.connection_setup.pause_button_clicked(context)
         return {'FINISHED'}
 
+# class StartRecordButtonOperator(Operator):
+#     bl_idname = "wm.start_record"
+#     bl_description = "Start recording"
+#     bl_label = "Start Record"
+
+#     def execute(self, context):
+#         if ConnectButtonOperator.connection_setup is not None:
+#             context.window_manager.record_status = True
+#         return {'FINISHED'}
+
+# class StopRecordButtonOperator(Operator):
+#     bl_idname = "wm.stop_record"
+#     bl_description = "Stop recording"
+#     bl_label = "Stop Record"
+
+#     def execute(self, context):
+#         if ConnectButtonOperator.connection_setup is not None:
+#             context.window_manager.record_status = False
+#         return {'FINISHED'}
+
 class ResetOperator(Operator): 
     bl_idname = "object.reset_operator"
     bl_description = "Reset the connection"
@@ -224,11 +252,11 @@ class ResetOperator(Operator):
         existing_connection = None
         
         # Delete all custom properties of each object from collection of properties
-        for attr in dir(bpy.data):
-            if "bpy_prop_collection" in str(type(getattr(bpy.data, attr))):
-                for obj in getattr(bpy.data, attr):
-                    for custom_prop_name in list(obj.keys()):
-                        del obj[custom_prop_name]
+        # for attr in dir(bpy.data):
+        #     if "bpy_prop_collection" in str(type(getattr(bpy.data, attr))):
+        #         for obj in getattr(bpy.data, attr):
+        #             for custom_prop_name in list(obj.keys()):
+        #                 del obj[custom_prop_name]
 
         # Deselect all objects
         bpy.ops.object.select_all(action='DESELECT')
