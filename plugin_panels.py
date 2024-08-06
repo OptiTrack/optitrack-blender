@@ -94,20 +94,26 @@ class Connection(Panel):
                              text=plugin_operators.StartButtonOperator.bl_label, \
                                 icon_value = IconsLoader.get_icon("Awaiting")) # icon= 'TEMP')
             
+            row = layout.row()
+            if context.window_manager.record_status:
+                row.label(text="Recording", icon_value = IconsLoader.get_icon("Checkmark"))
+                row.operator(plugin_operators.StopRecordButtonOperator.bl_idname, \
+                             text=plugin_operators.StopRecordButtonOperator.bl_label, \
+                                icon_value = IconsLoader.get_icon("Pause"))
+            else:
+                row.operator(plugin_operators.StartRecordButtonOperator.bl_idname, \
+                             text=plugin_operators.StartRecordButtonOperator.bl_label, \
+                                icon_value = IconsLoader.get_icon("Awaiting"))
+            
             # row = layout.row()
-            # if context.window_manager.record_status:
-            #     row.label(text="Recording", icon_value = IconsLoader.get_icon("Checkmark")) # icon='CHECKMARK')
-            #     row.operator(plugin_operators.StopRecordButtonOperator.bl_idname, \
-            #                  text=plugin_operators.StopRecordButtonOperator.bl_label, \
-            #                     icon_value = IconsLoader.get_icon("Pause")) # icon='PAUSE')
-            # else:
-            #     row.operator(plugin_operators.StartRecordButtonOperator.bl_idname, \
-            #                  text=plugin_operators.StartRecordButtonOperator.bl_label, \
-            #                     icon_value = IconsLoader.get_icon("Awaiting")) # icon= 'TEMP')
+            # row.operator(plugin_operators.StartEndFrameOperator.bl_idname, \
+            #              text="Select Keyframes")
+            # row.label(text=plugin_operators.StartEndFrameOperator.start_frame)
+            # row.label(text=plugin_operators.StartEndFrameOperator.end_frame)
         else:
             layout.operator(plugin_operators.ConnectButtonOperator.bl_idname, \
                             text=plugin_operators.ConnectButtonOperator.bl_label, \
-                                icon_value = IconsLoader.get_icon("Connect")) # icon= 'TRIA_RIGHT_BAR')
+                                icon_value = IconsLoader.get_icon("Connect"))
 
 # Object Properties Pane
 class AssignObjects(Panel):

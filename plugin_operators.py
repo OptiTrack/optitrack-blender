@@ -105,18 +105,21 @@ class ConnectionSetup:
             try:
                 if not self.q.empty(): 
                     q_val = self.q.get()
-                    try:
+                    try:    
+                        # bpy.context.scene.frame_set()
                         my_obj = self.rigid_bodies_blender[q_val[0]] # new_id
                         my_obj.location = q_val[1]
-                        # if context.window_manager.record_status == True:
-                        # print("loc: ", my_obj, my_obj.location, q_val[3])
-                        if bpy.context.scene.frame_end < q_val[3]:
-                            bpy.context.scene.frame_end = q_val[3]
-                        my_obj.keyframe_insert(data_path="location", frame=q_val[3])
+                        if bpy.context.window_manager.record_status == True:
+                            if bpy.context.scene.frame_end < q_val[3]:
+                                bpy.context.scene.frame_end = q_val[3]
+                            if bpy.context.scene.frame_current != q_val[3]:
+                                bpy.context.scene.frame_set(q_val[3])
+                                my_obj.keyframe_insert(data_path="location", frame=q_val[3]) 
+                        # obj.data.keyframe_insert() instead
                         my_obj.rotation_mode = 'QUATERNION'
                         my_obj.rotation_quaternion = q_val[2]
-                        # if context.window_manager.record_status == True:
-                        my_obj.keyframe_insert(data_path="rotation_quaternion",frame=q_val[3])
+                        if bpy.context.window_manager.record_status == True:
+                            my_obj.keyframe_insert(data_path="rotation_quaternion",frame=q_val[3])
                     except KeyError:
                         # if object id updated in middle of the running .tak
                         pass
@@ -218,25 +221,41 @@ class PauseButtonOperator(Operator):
             ConnectButtonOperator.connection_setup.pause_button_clicked(context)
         return {'FINISHED'}
 
-# class StartRecordButtonOperator(Operator):
-#     bl_idname = "wm.start_record"
-#     bl_description = "Start recording"
-#     bl_label = "Start Record"
+class StartRecordButtonOperator(Operator):
+    bl_idname = "wm.start_record"
+    bl_description = "Start recording"
+    bl_label = "Start Record"
+
+    def execute(self, context):
+        if ConnectButtonOperator.connection_setup is not None:
+            context.window_manager.record_status = True
+        return {'FINISHED'}
+
+class StopRecordButtonOperator(Operator):
+    bl_idname = "wm.stop_record"
+    bl_description = "Stop recording"
+    bl_label = "Pause"
+
+    def execute(self, context):
+        if ConnectButtonOperator.connection_setup is not None:
+            context.window_manager.record_status = False
+        return {'FINISHED'}
+
+# class StartEndFrameOperator(Operator):
+#     bl_idname = "wm.set_frame"
+#     bl_description = "Set frames for recording"
+#     bl_label = "Set frames for recording"
+
+#     start_frame : bpy.props.IntProperty(name= "start frame", default=0)
+#     end_frame : bpy.props.IntProperty(name= "end frame", default=250)
 
 #     def execute(self, context):
-#         if ConnectButtonOperator.connection_setup is not None:
-#             context.window_manager.record_status = True
+#         bpy.context.scene.frame_start = self.start_frame
+#         bpy.context.scene.frame_end = self.end_frame
 #         return {'FINISHED'}
-
-# class StopRecordButtonOperator(Operator):
-#     bl_idname = "wm.stop_record"
-#     bl_description = "Stop recording"
-#     bl_label = "Stop Record"
-
-#     def execute(self, context):
-#         if ConnectButtonOperator.connection_setup is not None:
-#             context.window_manager.record_status = False
-#         return {'FINISHED'}
+    
+#     def invoke(self, context, event):
+#         return context.window_manager.invoke_props_dialog(self)
 
 class ResetOperator(Operator): 
     bl_idname = "object.reset_operator"

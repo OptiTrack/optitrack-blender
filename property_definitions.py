@@ -82,4 +82,4 @@ class CustomSceneProperties(PropertyGroup):
                                    description="Configure scene to above settings",
                                    default=True)
     
-    # record: BoolProperty(name="Record", description="Record animation", default=True)
+    # custom_recording: BoolProperty(name="Record", description="Record animation", default=True)
