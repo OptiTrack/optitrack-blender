@@ -17,7 +17,7 @@
 import sys
 import socket
 import struct
-from threading import Thread, Event
+from threading import Thread
 import copy
 import time
 from . import DataDescriptions

@@ -1,5 +1,5 @@
 import bpy
-from .plugin_operators import ConnectButtonOperator
+from .plugin_operators import ConnectOperator
 from bpy.props import StringProperty, IntProperty, FloatProperty, EnumProperty, BoolProperty
 from bpy.types import PropertyGroup
 
@@ -21,7 +21,7 @@ def update_frame_rate(self, context):
 def get_id_names(self, context):
     enum_items = [('None', "Null", "None")]
 
-    existing_connection = ConnectButtonOperator.connection_setup
+    existing_connection = ConnectOperator.connection_setup
     if existing_connection.rigid_bodies_motive:
         for id, name in existing_connection.rigid_bodies_motive.items():
             id = str(id)
@@ -33,7 +33,7 @@ def get_id_names(self, context):
 def update_list(self, context):
     id = self.rigid_bodies
     current_obj = bpy.data.objects[self.obj_name]
-    existing_conn = ConnectButtonOperator.connection_setup
+    existing_conn = ConnectOperator.connection_setup
     if current_obj in existing_conn.rev_rigid_bodies_blender:
         del existing_conn.rigid_bodies_blender[existing_conn.rev_rigid_bodies_blender[current_obj]]
         del existing_conn.rev_rigid_bodies_blender[current_obj]
@@ -75,11 +75,10 @@ class CustomSceneProperties(PropertyGroup):
     
     scale : FloatProperty(name="Unit Scale", default=1, update=update_unit_scale, precision=3)
     
-    fps_value : IntProperty(name="Frame Rate", default=120, 
-                                      min=1, max=1000)
+    fps_value : IntProperty(name="Frame Rate", default=120, min=1, max=1000)
     
     default_settings: BoolProperty(name="Keep configuration", 
                                    description="Configure scene to above settings",
                                    default=True)
     
-    # custom_recording: BoolProperty(name="Record", description="Record animation", default=True)
+    custom_recording: BoolProperty(name="Selective keyframes", description="For recording", default=False)

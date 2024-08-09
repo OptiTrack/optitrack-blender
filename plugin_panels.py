@@ -1,6 +1,6 @@
 import bpy
 from . import plugin_operators
-from .plugin_operators import ConnectButtonOperator
+from .plugin_operators import ConnectOperator
 from bpy.types import Panel
 from .icon_viewer import IconsLoader
 
@@ -14,7 +14,7 @@ class PluginMotive(Panel):
     def draw(self, context):
         layout = self.layout
         
-        row = layout.row()
+        row = layout.row(align=True)
         row.label(text = "Motive Plugin", icon_value = IconsLoader.get_icon("Motive"))
 
 class InitialSettings(Panel):
@@ -37,13 +37,13 @@ class InitialSettings(Panel):
         row = box2.row(align=True)
         row.label(text="Set Transmission Type to")
         row = box2.row(align=True)
-        row.scale_x = 250
+        # row.scale_x = 250
         row.label(text="Multicast in Streaming Settings.")
         box.prop(initprop, 'unit_setting')
         box.prop(initprop, 'scale')
         box.prop(initprop, 'fps_value')
 
-        row = layout.row()
+        row = layout.row(align=True)
         row.prop(initprop, 'default_settings')
 
 class Connection(Panel):
@@ -65,55 +65,91 @@ class Connection(Panel):
                          text=plugin_operators.ResetOperator.bl_label, \
                             icon_value = IconsLoader.get_icon("Stop")) # icon='SNAP_FACE')
 
-            row = layout.row()
+            row = layout.row(align=True)
             row.label(text="Motive Assets (ID: Name)")
-            row = layout.row()
-            obj_ls = ConnectButtonOperator.connection_setup.streaming_client.desc_dict
+            row = layout.row(align=True)
+            obj_ls = ConnectOperator.connection_setup.streaming_client.desc_dict
             if obj_ls:
                 box = layout.box()
                 for key, val in obj_ls.items():
-                    row = box.row()
+                    row = box.row(align=True)
                     row.label(text=str(key) + ": " + str(val), icon_value = IconsLoader.get_icon("RigidBody"))
             else:
                 box = layout.box()
-                row = box.row()
+                row = box.row(align=True)
 
-            row = layout.row()
+            row = layout.row(align=True)
             row.operator(plugin_operators.RefreshAssetsOperator.bl_idname, \
                          text=plugin_operators.RefreshAssetsOperator.bl_label, \
                             icon_value = IconsLoader.get_icon("Refresh")) # icon='FILE_REFRESH')
             
-            row = layout.row()
+            row = layout.row(align=True)
             if context.window_manager.start_status:
                 row.label(text="Receiving", icon_value = IconsLoader.get_icon("Checkmark")) # icon='CHECKMARK')
-                row.operator(plugin_operators.PauseButtonOperator.bl_idname, \
-                             text=plugin_operators.PauseButtonOperator.bl_label, \
+                row.operator(plugin_operators.PauseOperator.bl_idname, \
+                             text=plugin_operators.PauseOperator.bl_label, \
                                 icon_value = IconsLoader.get_icon("Pause")) # icon='PAUSE')
             else:
-                row.operator(plugin_operators.StartButtonOperator.bl_idname, \
-                             text=plugin_operators.StartButtonOperator.bl_label, \
+                row.operator(plugin_operators.StartOperator.bl_idname, \
+                             text=plugin_operators.StartOperator.bl_label, \
                                 icon_value = IconsLoader.get_icon("Awaiting")) # icon= 'TEMP')
-            
-            row = layout.row()
-            if context.window_manager.record_status:
-                row.label(text="Recording", icon_value = IconsLoader.get_icon("Checkmark"))
-                row.operator(plugin_operators.StopRecordButtonOperator.bl_idname, \
-                             text=plugin_operators.StopRecordButtonOperator.bl_label, \
-                                icon_value = IconsLoader.get_icon("Pause"))
-            else:
-                row.operator(plugin_operators.StartRecordButtonOperator.bl_idname, \
-                             text=plugin_operators.StartRecordButtonOperator.bl_label, \
-                                icon_value = IconsLoader.get_icon("Awaiting"))
-            
-            # row = layout.row()
-            # row.operator(plugin_operators.StartEndFrameOperator.bl_idname, \
-            #              text="Select Keyframes")
-            # row.label(text=plugin_operators.StartEndFrameOperator.start_frame)
-            # row.label(text=plugin_operators.StartEndFrameOperator.end_frame)
+
         else:
-            layout.operator(plugin_operators.ConnectButtonOperator.bl_idname, \
-                            text=plugin_operators.ConnectButtonOperator.bl_label, \
+            layout.operator(plugin_operators.ConnectOperator.bl_idname, \
+                            text=plugin_operators.ConnectOperator.bl_label, \
                                 icon_value = IconsLoader.get_icon("Connect"))
+
+class Recorder(Panel):
+    bl_idname = "VIEW3D_PT_recorder"
+    bl_label = "Recorder"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'Motive'
+    bl_parent_id = 'VIEW3D_PT_connection'
+    bl_options = {'DEFAULT_CLOSED'}
+    
+    def draw(self, context):
+        layout = self.layout
+        Scene = context.scene
+        initprop = Scene.init_prop
+        
+        row = layout.row(align=True)
+        if context.window_manager.connection_status:
+            # no definite keyframes
+            row.enabled = not initprop.custom_recording
+            if context.window_manager.record2_status:
+                row.operator(plugin_operators.StopRecordOperator.bl_idname, \
+                             text=plugin_operators.StopRecordOperator.bl_label, \
+                                icon_value = IconsLoader.get_icon("RecordStop"))
+            else:
+                row.operator(plugin_operators.StartRecordOperator.bl_idname, \
+                             text=plugin_operators.StartRecordOperator.bl_label, \
+                                icon_value = IconsLoader.get_icon("Record"))
+            
+            row = layout.row(align=True)
+            row.prop(initprop, 'custom_recording')
+
+            # selective keyframes
+            row = layout.row(align=True)
+            row.enabled = initprop.custom_recording
+            row.operator(plugin_operators.StartEndFrameOperator.bl_idname, \
+                         text="Select Keyframes for recording")
+            row = layout.row(align=True)
+            row.enabled = initprop.custom_recording
+            if context.window_manager.record1_status:
+                row.operator(plugin_operators.StopFrameRecordOperator.bl_idname, \
+                             text=plugin_operators.StopRecordOperator.bl_label, \
+                                icon_value = IconsLoader.get_icon("RecordStop"))
+            else:
+                row.operator(plugin_operators.StartFrameRecordOperator.bl_idname, \
+                             text=plugin_operators.StartRecordOperator.bl_label, \
+                                icon_value = IconsLoader.get_icon("Record"))
+            
+            row = layout.row(align=True)
+            row.operator(plugin_operators.clearKeyframesOperator.bl_idname, \
+                         text=plugin_operators.clearKeyframesOperator.bl_label)
+        else:
+            row.label(text="Start the connection first!")
 
 # Object Properties Pane
 class AssignObjects(Panel):
@@ -132,7 +168,7 @@ class AssignObjects(Panel):
 
         layout.use_property_split = True
 
-        existing_conn = plugin_operators.ConnectButtonOperator.connection_setup
+        existing_conn = plugin_operators.ConnectOperator.connection_setup
         bad_obj_types = ['CAMERA', 'LIGHT']
         if existing_conn.streaming_client:
             existing_conn.get_rigid_body_dict(context)
@@ -159,8 +195,8 @@ class Info(Panel):
     def draw(self, context):
         layout = self.layout
         
-        row = layout.row()
+        row = layout.row(align=True)
         row.label(text = "OptiTrack Documentation", icon_value = IconsLoader.get_icon("Info")) # icon= 'INFO')
-        row = layout.row()
+        row = layout.row(align=True)
         row.operator("wm.url_open", text = "Website").url = "https://optitrack.com"
         row.operator("wm.url_open", text = "Documentation").url = "https://docs.optitrack.com/"
