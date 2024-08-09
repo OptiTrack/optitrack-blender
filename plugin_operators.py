@@ -2,8 +2,10 @@ import bpy
 import ipaddress
 from bpy.types import Operator
 import sys
-from threading import Lock, Event
+from threading import Lock
 from queue import Queue
+import mathutils
+import math
 from .Modified_NatNetClient import NatNetClient
 
 # Define a custom property to track states
@@ -54,7 +56,7 @@ class ConnectionSetup:
                                 "SetProperty,,Devices,false",
                                 "SetProperty,,Skeleton Coordinates,Global",
                                 "SetProperty,,Bone Naming Convention,FBX",
-                                "SetProperty,,Up Axis,Z-Axis"]
+                                "SetProperty,,Up Axis,Y-Axis"]
                 for sz_command in sz_commands:
                     return_code = self.streaming_client.send_command(sz_command)
                 return_code = self.streaming_client.send_command("SetProperty,,Skeletons,false")
@@ -85,10 +87,53 @@ class ConnectionSetup:
         # Request the model definitions
         return_code = s_client.send_modeldef_command()
     
+    def loc_yup_zup(self, pos):
+        temp = pos[1]
+        pos[1] = -1*pos[2]
+        pos[2] = temp
+        return pos
+    
+    def rot_yup_zup(self, ori):
+        temp = ori[1]
+        ori[1] = -1*ori[2]
+        ori[2] = temp
+        return ori
+    
+    def sca_first_last(self, ori):
+        # print("ori from Motive: ", ori)
+        temp = ori[3]
+        ori[3] = ori[2]
+        ori[2] = ori[1]
+        ori[1] = ori[0]
+        ori[0] = temp
+        # print("ori after: ", ori)
+        return ori
+    
+    def quat_to_euler(self, ori):
+        ori = mathutils.Quaternion(ori)
+        # print("ori mathutils: ", ori)
+        ori = ori.to_matrix()
+        ori = ori.to_euler('ZYX') # somehow matches XYZ
+        # print("ZYX ori: ", ori)
+        # ori = ori.to_matrix()
+        # ori = ori.to_euler('XYZ')
+        # ori.order = 'XYZ' # doesn't work
+        # print("rad rot: ", [i for i in ori])
+        # print("deg rot: ", [i*57.296 for i in ori])
+        return ori
+    
     # This is a callback function that gets connected to the NatNet client. It is called once per rigid body per frame
     def receive_rigid_body_frame(self, new_id, position, rotation):
         if new_id in self.rigid_bodies_blender:
-            values = (new_id, position, rotation)
+            position = list(position)
+            rotation = list(rotation)
+            # pos = self.loc_yup_zup(position)
+            pos = position
+            # rot = self.rot_yup_zup(rotation)
+            rot = rotation
+            rot = self.sca_first_last(rot)
+            rot = self.quat_to_euler(rot)
+            values = (new_id, pos, rot)
             self.l.acquire()
             try:
                 self.q.put(values)
@@ -107,8 +152,10 @@ class ConnectionSetup:
                     try:
                         my_obj = self.rigid_bodies_blender[q_val[0]] # new_id
                         my_obj.location = q_val[1]
-                        my_obj.rotation_mode = 'QUATERNION'
-                        my_obj.rotation_quaternion = q_val[2]
+                        # my_obj.rotation_mode = 'QUATERNION'
+                        # my_obj.rotation_quaternion = q_val[2]
+                        my_obj.rotation_mode = 'XYZ'
+                        my_obj.rotation_euler = q_val[2] 
                     except KeyError:
                         # if object id updated in middle of the running .tak
                         pass
