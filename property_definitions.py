@@ -81,4 +81,4 @@ class CustomSceneProperties(PropertyGroup):
                                    description="Configure scene to above settings",
                                    default=True)
     
-    custom_recording: BoolProperty(name="Selective keyframes", description="For recording", default=False)
+    custom_recording: BoolProperty(name="Record Frame Range", default=False)

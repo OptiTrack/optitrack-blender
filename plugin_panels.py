@@ -133,7 +133,7 @@ class Recorder(Panel):
             row = layout.row(align=True)
             row.enabled = initprop.custom_recording
             row.operator(plugin_operators.StartEndFrameOperator.bl_idname, \
-                         text="Select Keyframes for recording")
+                         text="Select Frame Range")
             row = layout.row(align=True)
             row.enabled = initprop.custom_recording
             if context.window_manager.record1_status:
@@ -149,7 +149,7 @@ class Recorder(Panel):
             row.operator(plugin_operators.clearKeyframesOperator.bl_idname, \
                          text=plugin_operators.clearKeyframesOperator.bl_label)
         else:
-            row.label(text="Start the connection first!")
+            row.label(text="Start the connection first")
 
 # Object Properties Pane
 class AssignObjects(Panel):

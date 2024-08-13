@@ -286,11 +286,11 @@ class StopRecordOperator(Operator):
 
 class StartEndFrameOperator(Operator):
     bl_idname = "wm.set_frame"
-    bl_description = "Set frames for recording"
-    bl_label = "Set frames for recording"
+    bl_description = "Set Frames for Recording"
+    bl_label = "Set Frames for Recording"
 
-    start_frame : bpy.props.IntProperty(name= "start frame", default=0)
-    end_frame : bpy.props.IntProperty(name= "end frame", default=250)
+    start_frame : bpy.props.IntProperty(name= "Start Frame", default=0)
+    end_frame : bpy.props.IntProperty(name= "End Frame", default=250)
 
     def execute(self, context):
         initprop = context.scene.init_prop
