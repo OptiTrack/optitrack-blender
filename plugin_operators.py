@@ -112,7 +112,7 @@ class ConnectionSetup:
     
     def eul_loc_yup_zup(self, pos):
         # Rot_matrix = [[-1, 0, 0], [0, 0, -1], [0, -1, 0]]
-        pos_copy = [-pos[0], -pos[2], -pos[1]]
+        pos_copy = [-pos[0], pos[2], -pos[1]]
         return pos_copy
     
     def eul_rot_yup_zup(self, ori):
