@@ -87,17 +87,37 @@ class ConnectionSetup:
         # Request the model definitions
         return_code = s_client.send_modeldef_command()
     
-    def loc_yup_zup(self, pos):
-        temp = pos[1]
-        pos[1] = -1*pos[2]
-        pos[2] = temp
-        return pos
+    def quat_loc_yup_zup(self, pos):
+        # temp = pos[1]
+        # pos[1] = -1*pos[2]
+        # pos[2] = temp
+        pos_copy = [0]*3
+        pos_copy[0] = pos[2]
+        pos_copy[1] = pos[0]
+        pos_copy[2] = pos[1]
+        return pos_copy
+        # return pos
     
-    def rot_yup_zup(self, ori):
-        temp = ori[1]
-        ori[1] = -1*ori[2]
-        ori[2] = temp
-        return ori
+    def quat_rot_yup_zup(self, ori):
+        # temp = ori[1]
+        # ori[1] = -1*ori[2]
+        # ori[2] = temp
+        ori_copy = [0]*4
+        ori_copy[0] = ori[2]
+        ori_copy[1] = ori[0]
+        ori_copy[2] = ori[1]
+        ori_copy[3] = ori[3]
+        return ori_copy
+        # return ori
+    
+    def eul_loc_yup_zup(self, pos):
+        # Rot_matrix = [[-1, 0, 0], [0, 0, -1], [0, -1, 0]]
+        pos_copy = [-pos[0], -pos[2], -pos[1]]
+        return pos_copy
+    
+    def eul_rot_yup_zup(self, ori):
+        ori_copy = [-ori[0], -ori[2], -ori[1]]
+        return ori_copy
     
     def sca_first_last(self, ori):
         ori.append(ori.pop(0))
@@ -130,8 +150,8 @@ class ConnectionSetup:
         x = -self.sign(x) * (math.pi - abs(x))
         z = -self.sign(z) * (math.pi - abs(z))
         eul = [x, y, z]
-        euler = [i*57.29578 for i in eul]
-        print("euler: ", euler)
+        # euler = [i*57.29578 for i in eul]
+        # print("euler: ", euler)
         return eul
     
     # This is a callback function that gets connected to the NatNet client. It is called once per rigid body per frame
@@ -139,12 +159,12 @@ class ConnectionSetup:
         if new_id in self.rigid_bodies_blender:
             position = list(position)
             rotation = list(rotation)
-            pos = self.loc_yup_zup(position)
-            rot = self.rot_yup_zup(rotation)
+            pos = self.eul_loc_yup_zup(position)
             # pos = position
             # rot = rotation
-            rot = self.sca_first_last(rot)
+            rot = self.sca_first_last(rotation)
             rot = self.quat_to_euler(rot)
+            rot = self.eul_rot_yup_zup(rot)
             values = (new_id, pos, rot)
             self.l.acquire()
             try:
