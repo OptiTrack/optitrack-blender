@@ -1,12 +1,3 @@
-The following files are distributed by NaturalPoint, DBA OptiTrack, under the NatNet SDK and use the license file described by "Blender NaturalPoint Plugin EULA.pdf":
-* DataDescriptions.py
-* MoCapData.py
-* NatNetClient.py
-* Modified_NatNetClient.py
-
-All other files in this plugin fall under the GPLv2 license described below. 
-
----
 
                    GNU GENERAL PUBLIC LICENSE
                        Version 2, June 1991
@@ -17,6 +8,18 @@ All other files in this plugin fall under the GPLv2 license described below.
  of this license document, but changing it is not allowed.
 
                             Preamble
+
+The following files are distributed by NaturalPoint, DBA OptiTrack,
+under the NatNet SDK and use the license file described by "Blender
+NaturalPoint Plugin EULA.pdf":
+
+* DataDescriptions.py
+* MoCapData.py
+* NatNetClient.py
+* Modified_NatNetClient.py
+
+All other files in this plugin fall under the GPLv2 license described 
+below. 
 
   The licenses for most software are designed to take away your
 freedom to share and change it.  By contrast, the GNU General Public
