@@ -110,10 +110,13 @@ class ConnectionSetup:
         # temp = ori[1]
         # ori[1] = -1*ori[2]
         # ori[2] = temp
-        # Motive's quat p -> Blender's p' = qpq^(-1)
-        q = [0, (1/math.sqrt(2)), (1/math.sqrt(2)), 0]
+        # Motive's quat p -> Blender's quat p' = qpq^(-1)
+        # 180 on Y, -90 on X, 180 on Z
+        # q = [0, (1/math.sqrt(2)), (1/math.sqrt(2)), 0]
+        q = [(1/math.sqrt(2)), 0, 0, (1/math.sqrt(2))]
         # q^(-1) = [q0, -q1, -q2, -q3]
-        q_inv = [0, -(1/math.sqrt(2)), -(1/math.sqrt(2)), 0]
+        # q_inv = [0, -(1/math.sqrt(2)), -(1/math.sqrt(2)), 0]
+        q_inv = [(1/math.sqrt(2)), 0, 0, -(1/math.sqrt(2))]
         p_1 = self.quat_product(q, ori)
         p_dash = self.quat_product(p_1, q_inv)
         return p_dash
@@ -137,28 +140,28 @@ class ConnectionSetup:
     
     def quat_to_euler(self, ori):
         ori = mathutils.Quaternion(ori)
-        # ori = ori.to_matrix()
-        # ori = ori.to_euler('ZYX') # somehow matches XYZ
+        ori = ori.to_matrix()
+        eul = ori.to_euler('ZYX') # somehow matches XYZ
         # print("rad rot: ", [i for i in ori])
         # print("deg rot: ", [i*57.296 for i in ori])
 
-        # custom function - ZYX answer
-        # # x-axis rotation (roll)
-        # x = math.atan2(2 * ((ori.w * ori.x) + (ori.y * ori.z)), 1 - (2 * ((ori.x * ori.x) + (ori.y * ori.y)))) 
-        # # y-axis rotation (pitch)
-        # y = (2 * math.atan2(math.sqrt(1 + (2 * ((ori.w * ori.y) - (ori.x * ori.z)))), /
+        # custom function - values don't match
+        # # x-axis rotation (roll) -> Motive Z
+        # z = math.atan2(2 * ((ori.w * ori.x) + (ori.y * ori.z)), 1 - (2 * ((ori.x * ori.x) + (ori.y * ori.y)))) 
+        # # y-axis rotation (pitch) -> Motive X
+        # x = (2 * math.atan2(math.sqrt(1 + (2 * ((ori.w * ori.y) - (ori.x * ori.z)))), \
         # math.sqrt(1 - (2 * ((ori.w * ori.y) - (ori.x * ori.z)))))) - (math.pi/2)
-        # # z-axis rotation (yaw)
-        # z = math.atan2(2 * ((ori.w * ori.z) + (ori.x * ori.y)), 1 - (2 * ((ori.y * ori.y) + (ori.z * ori.z))))
+        # # z-axis rotation (yaw) -> Motive Y
+        # y = math.atan2(2 * ((ori.w * ori.z) + (ori.x * ori.y)), 1 - (2 * ((ori.y * ori.y) + (ori.z * ori.z))))
         
         # custom function - XYZ answer
-        x = math.atan2(-2*(ori.y*ori.z - ori.w*ori.x), ori.w*ori.w - ori.x*ori.x - ori.y*ori.y + ori.z*ori.z)
-        y = math.asin ( 2*(ori.x*ori.z + ori.w*ori.y) )
-        z = math.atan2(-2*(ori.x*ori.y - ori.w*ori.z), ori.w*ori.w + ori.x*ori.x - ori.y*ori.y - ori.z*ori.z)
+        # x = math.atan2(-2*(ori.y*ori.z - ori.w*ori.x), ori.w*ori.w - ori.x*ori.x - ori.y*ori.y + ori.z*ori.z)
+        # y = math.asin ( 2*(ori.x*ori.z + ori.w*ori.y) )
+        # z = math.atan2(-2*(ori.x*ori.y - ori.w*ori.z), ori.w*ori.w + ori.x*ori.x - ori.y*ori.y - ori.z*ori.z)
+        # x = -self.sign(x) * (math.pi - abs(x))
+        # z = -self.sign(z) * (math.pi - abs(z))
         
-        x = -self.sign(x) * (math.pi - abs(x))
-        z = -self.sign(z) * (math.pi - abs(z))
-        eul = [x, y, z]
+        # eul = [x, y, z]
         # euler = [i*57.29578 for i in eul]
         # print("euler: ", euler)
         return eul
@@ -171,10 +174,13 @@ class ConnectionSetup:
             rot = list(rotation)
 
             # Z-Up with quats
-            # pos = self.quat_loc_yup_zup(position)
-            # rot = self.quat_rot_yup_zup(rotation)
+            pos = self.quat_loc_yup_zup(position)
+            rot = self.quat_rot_yup_zup(rotation)
             
+            # (x, y, z, w) -> (w, x, y, z)
             rot = self.sca_first_last(rot)
+            
+            # quats -> euler
             rot = self.quat_to_euler(rot)
             
             # z-up with eulers
