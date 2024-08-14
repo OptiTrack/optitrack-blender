@@ -91,32 +91,41 @@ class ConnectionSetup:
         # temp = pos[1]
         # pos[1] = -1*pos[2]
         # pos[2] = temp
+        # Motive's [X, Y, Z] -> Blender [-X, Z, Y]
         pos_copy = [0]*3
-        pos_copy[0] = pos[2]
-        pos_copy[1] = pos[0]
+        pos_copy[0] = -pos[0]
+        pos_copy[1] = pos[2]
         pos_copy[2] = pos[1]
         return pos_copy
         # return pos
     
+    def quat_product(self, r, s):
+        t0 = (r[0]*s[0] - r[1]*s[1] - r[2]*s[2] - r[3]*s[3])
+        t1 = (r[0]*s[1] + r[1]*s[0] - r[2]*s[3] + r[3]*s[2])
+        t2 = (r[0]*s[2] + r[1]*s[3] + r[2]*s[0] - r[3]*s[1])
+        t3 = (r[0]*s[3] - r[1]*s[2] + r[2]*s[1] + r[3]*s[0])
+        return [t0, t1, t2, t3]
+
     def quat_rot_yup_zup(self, ori):
         # temp = ori[1]
         # ori[1] = -1*ori[2]
         # ori[2] = temp
-        ori_copy = [0]*4
-        ori_copy[0] = ori[2]
-        ori_copy[1] = ori[0]
-        ori_copy[2] = ori[1]
-        ori_copy[3] = ori[3]
-        return ori_copy
+        # Motive's quat p -> Blender's p' = qpq^(-1)
+        q = [0, (1/math.sqrt(2)), (1/math.sqrt(2)), 0]
+        # q^(-1) = [q0, -q1, -q2, -q3]
+        q_inv = [0, -(1/math.sqrt(2)), -(1/math.sqrt(2)), 0]
+        p_1 = self.quat_product(q, ori)
+        p_dash = self.quat_product(p_1, q_inv)
+        return p_dash
         # return ori
     
     def eul_loc_yup_zup(self, pos):
-        # Rot_matrix = [[-1, 0, 0], [0, 0, -1], [0, -1, 0]]
-        pos_copy = [-pos[0], -pos[2], -pos[1]]
+        # Rot_matrix = [[-1, 0, 0], [0, 0, 1], [0, 1, 0]]
+        pos_copy = [-pos[0], pos[2], pos[1]]
         return pos_copy
     
     def eul_rot_yup_zup(self, ori):
-        ori_copy = [-ori[0], -ori[2], -ori[1]]
+        ori_copy = [-ori[0], ori[2], ori[1]]
         return ori_copy
     
     def sca_first_last(self, ori):
@@ -157,14 +166,21 @@ class ConnectionSetup:
     # This is a callback function that gets connected to the NatNet client. It is called once per rigid body per frame
     def receive_rigid_body_frame(self, new_id, position, rotation):
         if new_id in self.rigid_bodies_blender:
-            position = list(position)
-            rotation = list(rotation)
-            pos = self.eul_loc_yup_zup(position)
-            # pos = position
-            # rot = rotation
-            rot = self.sca_first_last(rotation)
+            # Y-Up
+            pos = list(position)
+            rot = list(rotation)
+
+            # Z-Up with quats
+            # pos = self.quat_loc_yup_zup(position)
+            # rot = self.quat_rot_yup_zup(rotation)
+            
+            rot = self.sca_first_last(rot)
             rot = self.quat_to_euler(rot)
-            rot = self.eul_rot_yup_zup(rot)
+            
+            # z-up with eulers
+            # pos = self.eul_loc_yup_zup(position)
+            # rot = self.eul_rot_yup_zup(rot)
+            
             values = (new_id, pos, rot)
             self.l.acquire()
             try:
