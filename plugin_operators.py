@@ -112,11 +112,11 @@ class ConnectionSetup:
         # ori[2] = temp
         # Motive's quat p -> Blender's quat p' = qpq^(-1)
         # 180 on Y, -90 on X, 180 on Z
-        # q = [0, (1/math.sqrt(2)), (1/math.sqrt(2)), 0]
-        q = [(1/math.sqrt(2)), 0, 0, (1/math.sqrt(2))]
+        q = [0, (1/math.sqrt(2)), (1/math.sqrt(2)), 0]
+        # q = [(1/math.sqrt(2)), 0, 0, (1/math.sqrt(2))]
         # q^(-1) = [q0, -q1, -q2, -q3]
-        # q_inv = [0, -(1/math.sqrt(2)), -(1/math.sqrt(2)), 0]
-        q_inv = [(1/math.sqrt(2)), 0, 0, -(1/math.sqrt(2))]
+        q_inv = [0, -(1/math.sqrt(2)), -(1/math.sqrt(2)), 0]
+        # q_inv = [(1/math.sqrt(2)), 0, 0, -(1/math.sqrt(2))]
         p_1 = self.quat_product(q, ori)
         p_dash = self.quat_product(p_1, q_inv)
         return p_dash
@@ -181,7 +181,7 @@ class ConnectionSetup:
             rot = self.sca_first_last(rot)
             
             # quats -> euler
-            rot = self.quat_to_euler(rot)
+            # rot = self.quat_to_euler(rot)
             
             # z-up with eulers
             # pos = self.eul_loc_yup_zup(position)
@@ -206,10 +206,10 @@ class ConnectionSetup:
                     try:
                         my_obj = self.rigid_bodies_blender[q_val[0]] # new_id
                         my_obj.location = q_val[1]
-                        # my_obj.rotation_mode = 'QUATERNION'
-                        # my_obj.rotation_quaternion = q_val[2]
-                        my_obj.rotation_mode = 'XYZ'
-                        my_obj.rotation_euler = q_val[2] 
+                        my_obj.rotation_mode = 'QUATERNION'
+                        my_obj.rotation_quaternion = q_val[2]
+                        # my_obj.rotation_mode = 'XYZ'
+                        # my_obj.rotation_euler = q_val[2] 
                     except KeyError:
                         # if object id updated in middle of the running .tak
                         pass
