@@ -37,7 +37,6 @@ class InitialSettings(Panel):
         row = box2.row(align=True)
         row.label(text="Set Transmission Type to")
         row = box2.row(align=True)
-        # row.scale_x = 250
         row.label(text="Multicast in Streaming Settings.")
         box.prop(initprop, 'unit_setting')
         box.prop(initprop, 'scale')
@@ -63,7 +62,7 @@ class Connection(Panel):
         if context.window_manager.connection_status:
             row.operator(plugin_operators.ResetOperator.bl_idname, \
                          text=plugin_operators.ResetOperator.bl_label, \
-                            icon_value = IconsLoader.get_icon("Stop")) # icon='SNAP_FACE')
+                            icon_value = IconsLoader.get_icon("Stop"))
 
             row = layout.row(align=True)
             row.label(text="Motive Assets (ID: Name)")
@@ -81,18 +80,18 @@ class Connection(Panel):
             row = layout.row(align=True)
             row.operator(plugin_operators.RefreshAssetsOperator.bl_idname, \
                          text=plugin_operators.RefreshAssetsOperator.bl_label, \
-                            icon_value = IconsLoader.get_icon("Refresh")) # icon='FILE_REFRESH')
+                            icon_value = IconsLoader.get_icon("Refresh"))
             
             row = layout.row(align=True)
             if context.window_manager.start_status:
-                row.label(text="Receiving", icon_value = IconsLoader.get_icon("Checkmark")) # icon='CHECKMARK')
+                row.label(text="Receiving", icon_value = IconsLoader.get_icon("Checkmark"))
                 row.operator(plugin_operators.PauseOperator.bl_idname, \
                              text=plugin_operators.PauseOperator.bl_label, \
-                                icon_value = IconsLoader.get_icon("Pause")) # icon='PAUSE')
+                                icon_value = IconsLoader.get_icon("Pause"))
             else:
                 row.operator(plugin_operators.StartOperator.bl_idname, \
                              text=plugin_operators.StartOperator.bl_label, \
-                                icon_value = IconsLoader.get_icon("Awaiting")) # icon= 'TEMP')
+                                icon_value = IconsLoader.get_icon("Awaiting"))
 
         else:
             layout.operator(plugin_operators.ConnectOperator.bl_idname, \
@@ -196,7 +195,7 @@ class Info(Panel):
         layout = self.layout
         
         row = layout.row(align=True)
-        row.label(text = "OptiTrack Documentation", icon_value = IconsLoader.get_icon("Info")) # icon= 'INFO')
+        row.label(text = "OptiTrack Documentation", icon_value = IconsLoader.get_icon("Info"))
         row = layout.row(align=True)
         row.operator("wm.url_open", text = "Website").url = "https://optitrack.com"
         row.operator("wm.url_open", text = "Documentation").url = "https://docs.optitrack.com/"
