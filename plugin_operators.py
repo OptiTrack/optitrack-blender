@@ -4,9 +4,8 @@ from bpy.types import Operator
 import sys
 from threading import Lock
 from queue import Queue
-# from scipy.spatial.transform import Rotation
 import mathutils
-from math import radians
+import math
 from .Modified_NatNetClient import NatNetClient
 
 # Define a custom property to track states
@@ -90,19 +89,107 @@ class ConnectionSetup:
         # Request the model definitions
         return_code = s_client.send_modeldef_command()
     
+    def quat_loc_yup_zup(self, pos):
+        # temp = pos[1]
+        # pos[1] = -1*pos[2]
+        # pos[2] = temp
+        # Motive's [X, Y, Z] -> Blender [-X, Z, Y]
+        pos_copy = [0]*3
+        pos_copy[0] = -pos[0]
+        pos_copy[1] = pos[2]
+        pos_copy[2] = pos[1]
+        return pos_copy
+        # return pos
+    
+    def quat_product(self, r, s):
+        t0 = (r[0]*s[0] - r[1]*s[1] - r[2]*s[2] - r[3]*s[3])
+        t1 = (r[0]*s[1] + r[1]*s[0] - r[2]*s[3] + r[3]*s[2])
+        t2 = (r[0]*s[2] + r[1]*s[3] + r[2]*s[0] - r[3]*s[1])
+        t3 = (r[0]*s[3] - r[1]*s[2] + r[2]*s[1] + r[3]*s[0])
+        return [t0, t1, t2, t3]
+
+    def quat_rot_yup_zup(self, ori):
+        # temp = ori[1]
+        # ori[1] = -1*ori[2]
+        # ori[2] = temp
+        # Motive's quat p -> Blender's quat p' = qpq^(-1)
+        # 180 on Y, -90 on X, 180 on Z
+        q = [0, (1/math.sqrt(2)), (1/math.sqrt(2)), 0]
+        # q = [(1/math.sqrt(2)), 0, 0, (1/math.sqrt(2))]
+        # q^(-1) = [q0, -q1, -q2, -q3]
+        q_inv = [0, -(1/math.sqrt(2)), -(1/math.sqrt(2)), 0]
+        # q_inv = [(1/math.sqrt(2)), 0, 0, -(1/math.sqrt(2))]
+        p_1 = self.quat_product(q, ori)
+        p_dash = self.quat_product(p_1, q_inv)
+        return p_dash
+        # return ori
+    
+    def eul_loc_yup_zup(self, pos):
+        # Rot_matrix = [[-1, 0, 0], [0, 0, 1], [0, 1, 0]]
+        pos_copy = [-pos[0], pos[2], pos[1]]
+        return pos_copy
+    
+    def eul_rot_yup_zup(self, ori):
+        ori_copy = [-ori[0], ori[2], ori[1]]
+        return ori_copy
+    
+    def sca_first_last(self, ori):
+        ori.append(ori.pop(0))
+        return ori
+    
+    def sign(self, num):
+        return int(num/abs(num)) if num != 0 else 0
+    
+    def quat_to_euler(self, ori):
+        ori = mathutils.Quaternion(ori)
+        ori = ori.to_matrix()
+        eul = ori.to_euler('ZYX') # somehow matches XYZ
+        # print("rad rot: ", [i for i in ori])
+        # print("deg rot: ", [i*57.296 for i in ori])
+
+        # custom function - values don't match
+        # # x-axis rotation (roll) -> Motive Z
+        # z = math.atan2(2 * ((ori.w * ori.x) + (ori.y * ori.z)), 1 - (2 * ((ori.x * ori.x) + (ori.y * ori.y)))) 
+        # # y-axis rotation (pitch) -> Motive X
+        # x = (2 * math.atan2(math.sqrt(1 + (2 * ((ori.w * ori.y) - (ori.x * ori.z)))), \
+        # math.sqrt(1 - (2 * ((ori.w * ori.y) - (ori.x * ori.z)))))) - (math.pi/2)
+        # # z-axis rotation (yaw) -> Motive Y
+        # y = math.atan2(2 * ((ori.w * ori.z) + (ori.x * ori.y)), 1 - (2 * ((ori.y * ori.y) + (ori.z * ori.z))))
+        
+        # custom function - XYZ answer
+        # x = math.atan2(-2*(ori.y*ori.z - ori.w*ori.x), ori.w*ori.w - ori.x*ori.x - ori.y*ori.y + ori.z*ori.z)
+        # y = math.asin ( 2*(ori.x*ori.z + ori.w*ori.y) )
+        # z = math.atan2(-2*(ori.x*ori.y - ori.w*ori.z), ori.w*ori.w + ori.x*ori.x - ori.y*ori.y - ori.z*ori.z)
+        # x = -self.sign(x) * (math.pi - abs(x))
+        # z = -self.sign(z) * (math.pi - abs(z))
+        
+        # eul = [x, y, z]
+        # euler = [i*57.29578 for i in eul]
+        # print("euler: ", euler)
+        return eul
+    
     # This is a callback function that gets connected to the NatNet client. It is called once per rigid body per frame
     def receive_rigid_body_frame(self, new_id, position, rotation, frame_number):
         if new_id in self.rigid_bodies_blender:
-            # convert motive's quat -> blender's quat
-            rot = [0]*4
-            rot[0] = rotation[3]
-            rot[1] = rotation[0]
-            rot[2] = rotation[1]
-            rot[3] = rotation[2]
+            # Y-Up
+            pos = list(position)
+            rot = list(rotation)
 
-            # convert motive's quat -> blender's euler
-            # rot = rotation.as_euler('xyz', degrees=False)
-            values = (new_id, position, rot, frame_number)
+            # Z-Up with quats
+            pos = self.quat_loc_yup_zup(position)
+            rot = self.quat_rot_yup_zup(rotation)
+            
+            # (x, y, z, w) -> (w, x, y, z)
+            rot = self.sca_first_last(rot)
+            
+            # quats -> euler
+            # rot = self.quat_to_euler(rot)
+            
+            # z-up with eulers
+            # pos = self.eul_loc_yup_zup(position)
+            # rot = self.eul_rot_yup_zup(rot)
+            
+            values = (new_id, pos, rot, frame_number)
             self.l.acquire()
             try:
                 self.q.put(values)
