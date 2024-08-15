@@ -169,17 +169,17 @@ class RBMarker:
 
 
 class RigidBodyDescription:
-    def __init__(self,sz_name="", new_id=0, parent_id=0,pos=[0.0,0.0,0.0]):
-        self.sz_name=sz_name
+    def __init__(self,sz_name="", new_id=0, parent_id=0, pos=[0.0,0.0,0.0]):
+        self.sz_name = sz_name
         self.id_num = new_id
         self.parent_id = parent_id
-        self.pos=pos
-        self.rb_marker_list=[]
+        self.pos = pos
+        self.rb_marker_list = []
         self.rb_num = -1
 
 
     def set_name(self,new_name):
-        self.sz_name=new_name
+        self.sz_name = new_name
 
     def set_id(self, new_id):
         self.id_num = new_id
@@ -188,7 +188,7 @@ class RigidBodyDescription:
         self.parent_id = parent_id
 
     def set_pos(self,p_x,p_y,p_z):
-        self.pos=[p_x,p_y,p_z]
+        self.pos = [p_x,p_y,p_z]
 
     def get_num_markers(self):
         return len(self.rb_marker_list)
