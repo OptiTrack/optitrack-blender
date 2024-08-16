@@ -7,7 +7,6 @@ bl_info = {
     "location": "View3D > Toolbar > Motive",
     "description": "live stream Motive data into blender",
     "warning": "",
-    "wiki_url": "github??",
     "category": "OptiTrack",
 }
 
