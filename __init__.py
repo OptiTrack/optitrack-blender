@@ -7,7 +7,6 @@ bl_info = {
     "location": "View3D > Toolbar > Motive",
     "description": "live stream Motive data into blender",
     "warning": "",
-    "wiki_url": "github??",
     "category": "OptiTrack",
 }
 
@@ -37,13 +36,21 @@ def register():
 
     global classes
     classes = [plugin_panels.PluginMotive, property_definitions.CustomSceneProperties,
-               property_definitions.CustomObjectProperties, 
-               plugin_panels.InitialSettings, plugin_panels.AssignObjects,
-               plugin_panels.Connection, plugin_operators.ResetOperator,
-               plugin_operators.ConnectButtonOperator, 
+               property_definitions.CustomObjectProperties, plugin_panels.InitialSettings, 
+               plugin_panels.AssignObjects, plugin_panels.Connection, 
+               plugin_panels.Recorder, plugin_operators.ResetOperator,
+               plugin_operators.ConnectOperator, 
                plugin_operators.RefreshAssetsOperator,
-               plugin_operators.StartButtonOperator,
-               plugin_operators.PauseButtonOperator, plugin_panels.Info]
+               plugin_operators.StartOperator,
+               plugin_operators.PauseOperator,
+               plugin_operators.StartRecordOperator, 
+               plugin_operators.StopRecordOperator,
+               plugin_operators.StartEndFrameOperator,
+               plugin_operators.StartFrameRecordOperator, 
+               plugin_operators.StopFrameRecordOperator,
+               plugin_operators.clearKeyframesOperator,
+               plugin_panels.Info]
+
     for cls in classes:
         bpy.utils.register_class(cls)
     
@@ -58,10 +65,6 @@ def register():
     bpy.app.handlers.load_post.append(app_handlers.load_handler)
 
 def unregister():
-    # from . import plugin_panels
-    # from . import plugin_operators
-    # from . import Modified_NatNetClient
-    # from . import property_definitions
     from . import app_handlers
     from . import icon_viewer
     

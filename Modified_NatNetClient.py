@@ -17,7 +17,7 @@
 import sys
 import socket
 import struct
-from threading import Thread, Event
+from threading import Thread
 import copy
 import time
 from . import DataDescriptions
@@ -86,6 +86,7 @@ class NatNetClient:
         self.rigid_body_listener = None
         self.model_changed = None
         self.new_frame_listener  = None
+        self.rb_listener = None
 
         # Set Application Name
         self.__application_name = "Not Set"
@@ -331,6 +332,7 @@ class NatNetClient:
 #Unpack Mocap Data Functions
     def __unpack_frame_prefix_data( self, data):
         offset = 0
+        global frame_number
         # Frame number (4 bytes)
         frame_number = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
         offset += 4
@@ -410,9 +412,11 @@ class NatNetClient:
 
         rigid_body = MoCapData.RigidBody(new_id, pos, rot)
 
+        frame_num = frame_number
+
         # Send information to any listener.
         if self.rigid_body_listener is not None:
-            self.rigid_body_listener( new_id, pos, rot )
+            self.rigid_body_listener( new_id, pos, rot, frame_num )
 
         # RB Marker Data ( Before version 3.0.  After Version 3.0 Marker data is in description )
         if( major < 3  and major != 0) :
@@ -823,8 +827,8 @@ class NatNetClient:
                                                                 (packet_size - offset),major, minor)
         offset += rel_offset
         mocap_data.set_rigid_body_data(rigid_body_data)
-        rigid_body_count = rigid_body_data.get_rigid_body_count()
-        # rigid_body_id = rigid_body_data.get_id_list()
+        rigid_body_count = rigid_body_data.get_rigid_body_count() 
+        rigid_body = rigid_body_data.rigid_body_list
 
         # Skeleton Data
         rel_offset = self.__unpack_skeleton_data(data[offset:], (packet_size - offset),major, minor)
@@ -862,6 +866,13 @@ class NatNetClient:
         if self.model_changed is not None:
             self.model_changed(tracked_models_changed)
         
+        # if self.rb_listener is not None:
+        #     rb_dict = {}
+        #     rb_dict["frame_number"] = frame_number
+        #     rb_dict[ "rb_id"] = rigid_body
+
+        #     self.rb_listener( rb_dict )
+        
         # Send information to any listener.
         if self.new_frame_listener is not None:
             data_dict={}
@@ -875,6 +886,7 @@ class NatNetClient:
             # data_dict["rigid_body_id"] = rigid_body_id
 
             self.new_frame_listener( data_dict )
+        
         return offset, mocap_data
 
     # Unpack a Markerset description packet
@@ -930,6 +942,11 @@ class NatNetClient:
         rb_desc.set_pos(pos[0],pos[1],pos[2])
 
         trace_dd( "\tPosition          : [%3.2f, %3.2f, %3.2f]"% (pos[0], pos[1], pos[2] ))
+
+        # Version 4.2 and higher, quaternion rotation offset contained in description
+        if (major == 4 and minor >= 2) or (major == 0) :
+            offset += 16
+            # trace_dd( "\tRotation          : [%3.2f, %3.2f, %3.2f, %3.2f]"% (quat[0], quat[1], quat[2], quat[3] ))
 
         # Version 3.0 and higher, rigid body marker information contained in description
         if (major >= 3) or (major == 0) :

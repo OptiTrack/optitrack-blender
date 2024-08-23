@@ -248,7 +248,7 @@ class RigidBody:
         self.rb_marker_list.append(copy.deepcopy(rigid_body_marker))
         return len(self.rb_marker_list)
 
-    def save_pos_ori(self): # RT: potentially want to save the location and orientation of the rigid body for every frame and output it
+    def save_pos_ori(self):
         return self.pos, self.rot
 
     def get_as_string(self, tab_str=0, level=0):
@@ -293,7 +293,6 @@ class RigidBodyData:
     def __init__(self):
         self.rigid_body_list=[]
 
-
     def add_rigid_body(self, rigid_body):
         self.rigid_body_list.append(copy.deepcopy(rigid_body))
         return len(self.rigid_body_list)
@@ -302,7 +301,7 @@ class RigidBodyData:
     def get_rigid_body_count(self): 
         return len(self.rigid_body_list)
     
-    def get_pos_ori(self): # RT: potentially want to save the location and orientation of the rigid body for every frame and output it
+    def get_pos_ori(self):
         locs = []
         oris = []
 
@@ -805,7 +804,7 @@ class MoCapData:
     def set_suffix_data(self, new_suffix_data):
         self.suffix_data = new_suffix_data
 
-    def retrieve_pos_ori(self): # RT: potentially want to save the location and orientation of the rigid body for every frame and output it
+    def retrieve_pos_ori(self):
         if not self.rigid_body_data == None:
             locs, oris = self.rigid_body_data.get_pos_ori()
             return locs, oris
@@ -863,220 +862,3 @@ class MoCapData:
         out_str+= "%sMoCap Frame End\n%s-----------------\n"%(out_tab_str,out_tab_str)
 
         return out_str
-
-
-
-# test program
-
-def generate_prefix_data(frame_num = 0):
-    frame_prefix_data = FramePrefixData(frame_num)
-    return frame_prefix_data
-
-def generate_label(label_base="label", label_num=0):
-    out_label= "%s_%3.3d"%(label_base, label_num)
-    return out_label
-
-def generate_position_srand(pos_num=0, frame_num=0):
-    random.seed(pos_num + (frame_num*1000))
-    position=[(random.random()*100),(random.random()*100),(random.random()*100)]
-    return position
-
-def generate_marker_data(label_base, label_num, num_points=1):
-    label=generate_label(label_base, label_num)
-    if((label_base == None) or (label_base == "")):
-        label=""
-    marker_data=MarkerData()
-    marker_data.set_model_name(label)
-    start_num=label_num * 10000
-    end_num = start_num+num_points
-    for point_num in range(start_num, end_num):
-        position=generate_position_srand(point_num)
-        marker_data.add_pos(position)
-
-    return marker_data
-
-
-def generate_marker_set_data(frame_num = 0, marker_set_num=0):
-    marker_set_data=MarkerSetData()
-    #add labeled markers
-    marker_set_data.add_marker_data(generate_marker_data("marker",0,3))
-    marker_set_data.add_marker_data(generate_marker_data("marker",1,6))
-    marker_set_data.add_marker_data(generate_marker_data("marker",2,5))
-    #add unlabeled markers
-    num_points=5
-    start_num=(frame_num * 100000) + (10000 + marker_set_num)
-    end_num = start_num+num_points
-    for point_num in range(start_num, end_num):
-        position=generate_position_srand(point_num)
-        marker_set_data.add_unlabeled_marker(position)
-    return marker_set_data
-
-def generate_rigid_body_marker_srand(marker_num=0, frame_num = 0):
-    rigid_body_marker=RigidBodyMarker()
-    rbm_num=11000+marker_num
-    random.seed(rbm_num)
-    rigid_body_marker.pos=generate_position_srand(rbm_num, frame_num)
-    rigid_body_marker.id_num=marker_num
-    rigid_body_marker.size=1
-    rigid_body_marker.error=random.random()
-
-    return rigid_body_marker
-def generate_rigid_body(body_num=0, frame_num = 0):
-    pos=generate_position_srand(10000+body_num, frame_num)
-    rot = [1,0,0,0]
-    rigid_body = RigidBody(body_num,pos,rot)
-    rigid_body.add_rigid_body_marker(generate_rigid_body_marker_srand(0, frame_num))
-    rigid_body.add_rigid_body_marker(generate_rigid_body_marker_srand(1, frame_num))
-    rigid_body.add_rigid_body_marker(generate_rigid_body_marker_srand(2))
-    return rigid_body
-
-def generate_rigid_body_data(frame_num = 0):
-    rigid_body_data=RigidBodyData()
-    # add rigid bodies
-    rigid_body_data.add_rigid_body(generate_rigid_body(0, frame_num))
-    rigid_body_data.add_rigid_body(generate_rigid_body(1, frame_num))
-    rigid_body_data.add_rigid_body(generate_rigid_body(2, frame_num))
-    return rigid_body_data
-
-def generate_skeleton(frame_num=0, skeleton_num=0,num_rbs=1):
-    skeleton = Skeleton(skeleton_num)
-    # add rigid bodies
-    rb_seed_start=skeleton_num *165
-    rb_seed_end=rb_seed_start + num_rbs
-    for rb_num in range(rb_seed_start, rb_seed_end):
-        skeleton.add_rigid_body(generate_rigid_body(rb_num, frame_num))
-    return skeleton
-
-def generate_skeleton_data(frame_num = 0):
-    skeleton_data = SkeletonData()
-    skeleton_data.add_skeleton(generate_skeleton(frame_num, 0, 2))
-    skeleton_data.add_skeleton(generate_skeleton(frame_num, 1, 6))
-    skeleton_data.add_skeleton(generate_skeleton(frame_num, 2, 3))
-    return skeleton_data
-
-def generate_labeled_marker(frame_num=0, marker_num=0):
-    point_num = (frame_num *2000) + marker_num
-    pos = generate_position_srand(point_num)
-    size = 1
-    param = 0
-    #occluded 0x01
-    param += 0x01 * 0
-    #point_cloud_solved 0x02
-    param += 0x02 * 0
-    #model_solved 0x04
-    param += 0x04 * 1
-    residual = 0.01
-    return LabeledMarker(marker_num, pos, size, param,residual)
-
-
-def generate_labeled_marker_data(frame_num = 0):
-    labeled_marker_data = LabeledMarkerData()
-    #add labeled marker
-    labeled_marker_data.add_labeled_marker(generate_labeled_marker(frame_num,0))
-    labeled_marker_data.add_labeled_marker(generate_labeled_marker(frame_num,1))
-    labeled_marker_data.add_labeled_marker(generate_labeled_marker(frame_num,2))
-
-    return labeled_marker_data
-
-def generate_fp_channel_data(frame_num=0,fp_num=0, channel_num=0, num_frames =1):
-    rseed=(frame_num*100000)+(fp_num*10000)+(channel_num *1000)
-    random.seed(rseed)
-    fp_channel_data = ForcePlateChannelData()
-    for _ in range(num_frames):
-        fp_channel_data.add_frame_entry(100.0*random.random())
-    return fp_channel_data
-
-
-def generate_force_plate(frame_num=0, fp_num = 0, num_channels=1):
-    force_plate = ForcePlate(fp_num)
-    #add channel_data
-    for i in range(num_channels):
-        force_plate.add_channel_data(generate_fp_channel_data(frame_num,fp_num, i, 10))
-    return force_plate
-
-
-def generate_force_plate_data(frame_num = 0):
-    force_plate_data = ForcePlateData()
-    # add force plates
-    force_plate_data.add_force_plate(generate_force_plate(frame_num, 0,3))
-    force_plate_data.add_force_plate(generate_force_plate(frame_num, 1,4))
-    force_plate_data.add_force_plate(generate_force_plate(frame_num, 2,2))
-    return force_plate_data
-
-def generate_device_channel_data(frame_num=0,device_num=0, channel_num=0, num_frames =1):
-    rseed=(frame_num*100000)+(device_num*10000)+(channel_num *1000)
-    random.seed(rseed)
-    device_channel_data = DeviceChannelData()
-    for _ in range(num_frames):
-        device_channel_data.add_frame_entry(100.0*random.random())
-    return device_channel_data
-
-
-def generate_device(frame_num=0, device_num=0):
-    device = Device(device_num)
-    device.add_channel_data(generate_device_channel_data(frame_num, device_num,1,4))
-    device.add_channel_data(generate_device_channel_data(frame_num, device_num,3,2))
-    device.add_channel_data(generate_device_channel_data(frame_num, device_num,7,6))
-    return device
-
-def generate_device_data(frame_num = 0):
-    device_data=DeviceData()
-    device_data.add_device(generate_device(frame_num, 0))
-    device_data.add_device(generate_device(frame_num, 2))
-    return device_data
-
-def generate_suffix_data(frame_num = 0):
-    frame_suffix_data = FrameSuffixData()
-    frame_suffix_data.stamp_camera_mid_exposure = 5844402979291+frame_num
-    frame_suffix_data.stamp_data_received = 0
-    frame_suffix_data.stamp_transmit = 5844403268753+ frame_num
-    frame_suffix_data.prec_timestamp_secs = 0
-    frame_suffix_data.prec_timestamp_frac_secs = 0
-    frame_suffix_data.timecode = 0
-    frame_suffix_data.timecode_sub = 0
-    frame_suffix_data.timestamp = 762.63
-    return frame_suffix_data
-
-
-def generate_mocap_data(frame_num=0):
-    mocap_data=MoCapData()
-
-    mocap_data.set_prefix_data(generate_prefix_data(frame_num))
-    mocap_data.set_marker_set_data(generate_marker_set_data(frame_num))
-    mocap_data.set_rigid_body_data(generate_rigid_body_data(frame_num))
-    mocap_data.set_skeleton_data(generate_skeleton_data(frame_num))
-    mocap_data.set_labeled_marker_data(generate_labeled_marker_data(frame_num))
-    mocap_data.set_force_plate_data(generate_force_plate_data(frame_num))
-    mocap_data.set_device_data(generate_device_data(frame_num))
-    mocap_data.set_suffix_data(generate_suffix_data(frame_num))
-
-    return mocap_data
-
-def test_all(run_test=True):
-    totals=[0,0,0]
-    if run_test is True:
-        test_cases=[["Test Prefix Data 0",          "bffba016d02cf2167780df31aee697e1ec746b4c", "generate_prefix_data(0)",True],
-                    ["Test Markerset Data 0",       "e56eb605b7b583252f644ca67118aafb7642f49f", "generate_marker_set_data(0)", True],
-                    ["Test Rigid Body Data 0", "5357b7146719aca7df226dab585b15d1d6096e35", "generate_rigid_body_data(0)", True],
-                    ["Test Skeleton Data 0", "19b6b8e2f4b4c68d5c67f353bea0b09d10343074", "generate_skeleton_data(0)", True],
-                    ["Test Labeled Marker Data 0", "e0dd01035424e8e927a4956c21819a1f0ed18355", "generate_labeled_marker_data(0)", True],
-                    ["Test Force Plate Data 0", "2bb1000049a98b3c4ff8c48c7560af94dcdd32b3", "generate_force_plate_data(0)", True],
-                    ["Test Device Data 0",          "be10f0b93a7ba3858dce976b7868c1f79fd719c3", "generate_device_data(0)",True],
-                    ["Test Suffix Data 0", "005a1b3e1f9e7530255ca75f34e4786cef29fcdb", "generate_suffix_data(0)", True],
-                    ["Test MoCap Data 0", "1f85afac1eb790d431a4f5936b44a8555a316122", "generate_mocap_data(0)", True],
-                    ]
-        num_tests = len(test_cases)
-        for i in range(num_tests):
-            data = eval(test_cases[i][2]) 
-            totals_tmp = test_hash2(test_cases[i][0],test_cases[i][1],data,test_cases[i][2],test_cases[i][3])
-            totals=add_lists(totals, totals_tmp)
-
-    print("--------------------")
-    print("[PASS] Count = %3.1d"%totals[0])
-    print("[FAIL] Count = %3.1d"%totals[1])
-    print("[SKIP] Count = %3.1d"%totals[2])
-
-    return totals
-
-if __name__ == "__main__":
-    test_all(True)

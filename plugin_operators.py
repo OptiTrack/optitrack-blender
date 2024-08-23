@@ -1,21 +1,26 @@
 import bpy
-import time
+import ipaddress
 from bpy.types import Operator
 import sys
-from threading import Lock, Event
+from threading import Lock
 from queue import Queue
+import mathutils
+import math
 from .Modified_NatNetClient import NatNetClient
 
 # Define a custom property to track states
 bpy.types.WindowManager.connection_status = bpy.props.BoolProperty(name="Connection Status", default=False)
 bpy.types.WindowManager.start_status = bpy.props.BoolProperty(name="Start Status", default=False)
+# 1 - selective keyframes, 2 - no definitive keyframes
+bpy.types.WindowManager.record1_status = bpy.props.BoolProperty(name="Record Status", default=False)
+bpy.types.WindowManager.record2_status = bpy.props.BoolProperty(name="Record Status", default=False)
 
 class ConnectionSetup:
     def __init__(self):
         self.streaming_client = None
         self.indicate_model_changed = None
         self.rigid_bodies_motive = {}
-        self.rigid_bodies_blender = {} # all objects getting stored ({ID: rigid_body} pair)
+        self.rigid_bodies_blender = {} # ({ID: rigid_body} pair)
         self.rev_rigid_bodies_blender = {} # ({rigid_body: ID} pair)
         self.q = Queue()
         self.l = Lock()
@@ -34,22 +39,17 @@ class ConnectionSetup:
     def signal_model_changed(self, tracked_model_changed): # flag to keep checking if Motive .tak changed
         self.indicate_model_changed = tracked_model_changed
 
-    def connect_button_clicked(self, context): 
-        # Initialize streaming client       
-        if self.streaming_client is None:
-            optionsDict = {'clientAddress': bpy.context.scene.init_prop.client_address, 'serverAddress': bpy.context.scene.init_prop.server_address, 'use_multicast': True}
-            self.streaming_client = NatNetClient()
-            # return_code = self.streaming_client.send_command("SetProperty,,Transmission Type,Multicast")
-            self.streaming_client.set_client_address(optionsDict["clientAddress"])
-            self.streaming_client.set_server_address(optionsDict["serverAddress"])
-            self.streaming_client.set_use_multicast(optionsDict["use_multicast"])
+    def connect_button_clicked(self, dict, context):
+        if self.streaming_client is not None:
+            self.streaming_client.set_client_address(dict["clientAddress"])
+            self.streaming_client.set_server_address(dict["serverAddress"])
+            self.streaming_client.set_use_multicast(dict["use_multicast"])
 
             self.is_running = self.streaming_client.run()
             
             # send commands to Motive to change its settings
             if self.is_running:            
-                sz_commands = [
-                                "SetProperty,,Labeled Markers,false",
+                sz_commands = [ "SetProperty,,Labeled Markers,false",
                                 "SetProperty,,Unlabeled Markers,false",
                                 "SetProperty,,Asset Markers,false",
                                 "SetProperty,,Rigid Bodies,true"
@@ -59,14 +59,13 @@ class ConnectionSetup:
                                 "SetProperty,,Devices,false",
                                 "SetProperty,,Skeleton Coordinates,Global",
                                 "SetProperty,,Bone Naming Convention,FBX",
-                                "SetProperty,,Up Axis,Z-Axis"]
+                                "SetProperty,,Up Axis,Y-Axis"]
                 for sz_command in sz_commands:
                     return_code = self.streaming_client.send_command(sz_command)
 
-                # return_code = self.streaming_client.send_command("SetProperty,,Skeletons,false")  
-
             # Update connection state
             context.window_manager.connection_status = True
+        
         else:
             context.window_manager.connection_status = False
             try:
@@ -90,10 +89,56 @@ class ConnectionSetup:
         # Request the model definitions
         return_code = s_client.send_modeldef_command()
     
-    # This is a callback function that gets connected to the NatNet client. It is called once per rigid body per frame
-    def receive_rigid_body_frame(self, new_id, position, rotation):
+    def quat_loc_yup_zup(self, pos):
+        # Motive's [X, Y, Z] -> Blender [-X, Z, Y]
+        pos_copy = [0]*3
+        pos_copy[0] = -pos[0]
+        pos_copy[1] = pos[2]
+        pos_copy[2] = pos[1]
+        return pos_copy
+    
+    def quat_product(self, r, s):
+        t0 = (r[0]*s[0] - r[1]*s[1] - r[2]*s[2] - r[3]*s[3])
+        t1 = (r[0]*s[1] + r[1]*s[0] - r[2]*s[3] + r[3]*s[2])
+        t2 = (r[0]*s[2] + r[1]*s[3] + r[2]*s[0] - r[3]*s[1])
+        t3 = (r[0]*s[3] - r[1]*s[2] + r[2]*s[1] + r[3]*s[0])
+        return [t0, t1, t2, t3]
+
+    def quat_rot_yup_zup(self, ori):
+        # Motive's quat p -> Blender's quat p' = qpq^(-1)
+        q = [0, (1/math.sqrt(2)), (1/math.sqrt(2)), 0]
+        q_inv = [0, -(1/math.sqrt(2)), -(1/math.sqrt(2)), 0]
+        p_1 = self.quat_product(q, ori)
+        p_dash = self.quat_product(p_1, q_inv)
+        return p_dash
+    
+    def sca_first_last(self, ori):
+        ori.append(ori.pop(0))
+        return ori
+    
+    def sign(self, num):
+        return int(num/abs(num)) if num != 0 else 0
+    
+    def quat_to_euler(self, ori):
+        ori = mathutils.Quaternion(ori)
+        ori = ori.to_matrix()
+        eul = ori.to_euler('ZYX')
+        return eul
+    
+    def receive_rigid_body_frame(self, new_id, position, rotation, frame_number):
         if new_id in self.rigid_bodies_blender:
-            values = (new_id, position, rotation)
+            # Y-Up
+            pos = list(position)
+            rot = list(rotation)
+
+            # Z-Up with quats
+            pos = self.quat_loc_yup_zup(position)
+            rot = self.quat_rot_yup_zup(rotation)
+            
+            # (x, y, z, w) -> (w, x, y, z)
+            rot = self.sca_first_last(rot)
+            
+            values = (new_id, pos, rot, frame_number)
             self.l.acquire()
             try:
                 self.q.put(values)
@@ -102,18 +147,46 @@ class ConnectionSetup:
                 bpy.app.timers.register(self.update_object_loc, first_interval=1/120) # freq = 120 Hz
         else:
             pass
-
+                        
     def update_object_loc(self):
         if self.rigid_bodies_blender:
             self.l.acquire()
             try:
                 if not self.q.empty(): 
                     q_val = self.q.get()
-                    try:
-                        my_obj = self.rigid_bodies_blender[q_val[0]] # new_id
-                        my_obj.location = q_val[1]
-                        my_obj.rotation_mode = 'QUATERNION'
-                        my_obj.rotation_quaternion = q_val[2]
+                    try:                        
+                        # no definitive keyframes
+                        if bpy.context.window_manager.record2_status == True:
+                            bpy.context.window_manager.record1_status = False
+                            if bpy.context.scene.frame_end <= q_val[3]:
+                                bpy.context.scene.frame_end = q_val[3]
+                            bpy.context.scene.frame_set(q_val[3])
+                            my_obj = self.rigid_bodies_blender[q_val[0]] # new_id
+                            my_obj.location = q_val[1]
+                            my_obj.keyframe_insert(data_path="location", frame=q_val[3])
+                            my_obj.rotation_mode = 'QUATERNION'
+                            my_obj.rotation_quaternion = q_val[2]
+                            my_obj.keyframe_insert(data_path="rotation_quaternion",frame=q_val[3])
+
+                        # selective keyframes
+                        elif bpy.context.window_manager.record1_status == True:
+                            bpy.context.window_manager.record2_status = False
+                            if bpy.context.scene.frame_start <= q_val[3] <= bpy.context.scene.frame_end:
+                                bpy.context.scene.frame_set(q_val[3])
+                                my_obj = self.rigid_bodies_blender[q_val[0]]
+                                my_obj.location = q_val[1]
+                                my_obj.keyframe_insert(data_path="location", frame=q_val[3])
+                                my_obj.rotation_mode = 'QUATERNION'
+                                my_obj.rotation_quaternion = q_val[2]
+                                my_obj.keyframe_insert(data_path="rotation_quaternion",frame=q_val[3])
+                        
+                        else:
+                            # no recording
+                            my_obj = self.rigid_bodies_blender[q_val[0]]
+                            my_obj.location = q_val[1]
+                            my_obj.rotation_mode = 'QUATERNION'
+                            my_obj.rotation_quaternion = q_val[2]
+
                     except KeyError:
                         # if object id updated in middle of the running .tak
                         pass
@@ -122,7 +195,7 @@ class ConnectionSetup:
         else:
             pass
     
-    def stop_receive_rigid_body_frame(self, new_id, position, rotation):
+    def stop_receive_rigid_body_frame(self, new_id, position, rotation, frame_number):
         pass
 
     def pause_button_clicked(self, context): # Stop the data stream, but don't update the stored info        
@@ -136,10 +209,10 @@ class ConnectionSetup:
             self.streaming_client = None
             context.window_manager.connection_status = False
 
-class ConnectButtonOperator(Operator):
+class ConnectOperator(Operator):
     bl_idname = "wm.connect_button"
     bl_description = "Establish the connection"
-    bl_label = "Start Connection"
+    bl_label = "Start Connection"   
 
     connection_setup = None
     if connection_setup is None:
@@ -147,11 +220,40 @@ class ConnectButtonOperator(Operator):
 
     def execute(self, context):
         conn = self.connection_setup
-        conn.connect_button_clicked(context)
-        print("connected")
-        conn.request_data_descriptions(conn.streaming_client, context)
-        from .app_handlers import reset_to_default
-        reset_to_default(context.scene)
+        # Initialize streaming client       
+        if conn.streaming_client is None:
+            optionsDict = {'clientAddress': bpy.context.scene.init_prop.client_address, \
+                           'serverAddress': bpy.context.scene.init_prop.server_address, \
+                            'use_multicast': True}
+            
+            # check the ips
+            try:
+                ipaddress.ip_address(optionsDict["clientAddress"])
+            except ValueError:
+                self.report({'ERROR'}, "Client IP is not valid")
+                conn.reset_to_initial()
+                return {'CANCELLED'}
+        
+            try:
+                ipaddress.ip_address(optionsDict["serverAddress"])
+            except ValueError:
+                self.report({'ERROR'}, "Server IP is not valid")
+                conn.reset_to_initial()
+                return {'CANCELLED'}
+            
+            conn.streaming_client = NatNetClient()
+        try:
+            conn.connect_button_clicked(optionsDict, context)
+            conn.request_data_descriptions(conn.streaming_client, context)
+            print("connected")
+            from .app_handlers import reset_to_default
+            reset_to_default(context.scene)
+        except Exception as e:
+            conn.streaming_client = None
+            context.window_manager.connection_status = False
+            self.report({'ERROR'}, f"Your Motive is not set to Multicast")
+            return {'CANCELLED'}
+    
         return {'FINISHED'}
 
 class RefreshAssetsOperator(Operator):
@@ -160,30 +262,100 @@ class RefreshAssetsOperator(Operator):
     bl_label = "Refresh Assets"
 
     def execute(self, context):
-        existing_connection = ConnectButtonOperator.connection_setup
+        existing_connection = ConnectOperator.connection_setup
         existing_connection.request_data_descriptions(existing_connection.streaming_client, context)
         if context.window_manager.start_status:
             existing_connection.pause_button_clicked(context)
         return {'FINISHED'}
 
-
-class StartButtonOperator(Operator):
+class StartOperator(Operator):
     bl_idname = "wm.start_button"
     bl_description = "Start receiving the data for every frame"
     bl_label = "Start Receiver"
 
     def execute(self, context):
-        ConnectButtonOperator.connection_setup.start_button_clicked(context)
+        ConnectOperator.connection_setup.start_button_clicked(context)
         return {'FINISHED'}
 
-class PauseButtonOperator(Operator):
+class PauseOperator(Operator):
     bl_idname = "wm.pause_button"
     bl_description = "Stop the data coming in but don't reset the connection"
     bl_label = "Pause"
     
     def execute(self, context):
-        if ConnectButtonOperator.connection_setup is not None:
-            ConnectButtonOperator.connection_setup.pause_button_clicked(context)
+        if ConnectOperator.connection_setup is not None:
+            ConnectOperator.connection_setup.pause_button_clicked(context)
+        return {'FINISHED'}
+
+class StartRecordOperator(Operator):
+    bl_idname = "wm.start_record2"
+    bl_description = "Start recording"
+    bl_label = "Start Record"
+
+    def execute(self, context):
+        if ConnectOperator.connection_setup is not None:
+            context.window_manager.record2_status = True
+            context.window_manager.record1_status = False
+        return {'FINISHED'}
+
+class StopRecordOperator(Operator):
+    bl_idname = "wm.stop_record2"
+    bl_description = "Stop recording"
+    bl_label = "Stop"
+
+    def execute(self, context):
+        if ConnectOperator.connection_setup is not None:
+            context.window_manager.record2_status = False
+        return {'FINISHED'}
+
+class StartEndFrameOperator(Operator):
+    bl_idname = "wm.set_frame"
+    bl_description = "Set Frames for Recording"
+    bl_label = "Set Frames for Recording"
+
+    start_frame : bpy.props.IntProperty(name= "Start Frame", default=0)
+    end_frame : bpy.props.IntProperty(name= "End Frame", default=250)
+
+    def execute(self, context):
+        initprop = context.scene.init_prop
+        bpy.context.scene.frame_start = self.start_frame
+        bpy.context.scene.frame_end = self.end_frame
+        return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+
+class StartFrameRecordOperator(Operator):
+    bl_idname = "wm.start_record1"
+    bl_description = "Start recording"
+    bl_label = "Start Record"
+
+    def execute(self, context):
+        if ConnectOperator.connection_setup is not None:
+            context.window_manager.record1_status = True
+            context.window_manager.record2_status = False
+        return {'FINISHED'}
+
+class StopFrameRecordOperator(Operator):
+    bl_idname = "wm.stop_record1"
+    bl_description = "Stop recording"
+    bl_label = "Stop"
+
+    def execute(self, context):
+        if ConnectOperator.connection_setup is not None:
+            context.window_manager.record1_status = False
+        return {'FINISHED'}
+
+class clearKeyframesOperator(Operator):
+    bl_idname = "wm.clear_anim"
+    bl_description = "Remove ALL keyframes for the selected object"
+    bl_label = "Clear Keyframes"
+
+    def execute(self, context):
+        if context.view_layer.objects.active:
+            obj = context.view_layer.objects.active
+            obj.select_set(True)
+            obj.animation_data_clear()
         return {'FINISHED'}
 
 class ResetOperator(Operator): 
@@ -192,14 +364,13 @@ class ResetOperator(Operator):
     bl_label = "Stop Connection"
 
     def execute(self, context):
-        if ConnectButtonOperator.connection_setup is not None:
-            existing_connection = ConnectButtonOperator.connection_setup
+        if ConnectOperator.connection_setup is not None:
+            existing_connection = ConnectOperator.connection_setup
             existing_connection.stop_button_clicked(context)
             existing_connection.reset_to_initial()
         
         existing_connection = None
         
-        # Delete all custom properties of each object from collection of properties
         for attr in dir(bpy.data):
             if "bpy_prop_collection" in str(type(getattr(bpy.data, attr))):
                 for obj in getattr(bpy.data, attr):
