@@ -83,5 +83,4 @@ def load_handler(dummy):
                         for custom_prop_name in list(obj.keys()):
                             del obj[custom_prop_name]
 
-            # Deselect all objects
             bpy.ops.object.select_all(action='DESELECT')

@@ -944,8 +944,7 @@ class NatNetClient:
         trace_dd( "\tPosition          : [%3.2f, %3.2f, %3.2f]"% (pos[0], pos[1], pos[2] ))
 
         # Version 4.2 and higher, quaternion rotation offset contained in description
-        if (major == 4 and minor >= 2) or (major == 0) : # (major >= 4) or
-            # quat = Quaternion.unpack( data[offset:offset+16] )
+        if (major == 4 and minor >= 2) or (major == 0) :
             offset += 16
             # trace_dd( "\tRotation          : [%3.2f, %3.2f, %3.2f, %3.2f]"% (quat[0], quat[1], quat[2], quat[3] ))
 

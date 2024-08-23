@@ -20,7 +20,7 @@ class ConnectionSetup:
         self.streaming_client = None
         self.indicate_model_changed = None
         self.rigid_bodies_motive = {}
-        self.rigid_bodies_blender = {} # all objects getting stored ({ID: rigid_body} pair)
+        self.rigid_bodies_blender = {} # ({ID: rigid_body} pair)
         self.rev_rigid_bodies_blender = {} # ({rigid_body: ID} pair)
         self.q = Queue()
         self.l = Lock()
@@ -90,16 +90,12 @@ class ConnectionSetup:
         return_code = s_client.send_modeldef_command()
     
     def quat_loc_yup_zup(self, pos):
-        # temp = pos[1]
-        # pos[1] = -1*pos[2]
-        # pos[2] = temp
         # Motive's [X, Y, Z] -> Blender [-X, Z, Y]
         pos_copy = [0]*3
         pos_copy[0] = -pos[0]
         pos_copy[1] = pos[2]
         pos_copy[2] = pos[1]
         return pos_copy
-        # return pos
     
     def quat_product(self, r, s):
         t0 = (r[0]*s[0] - r[1]*s[1] - r[2]*s[2] - r[3]*s[3])
@@ -109,29 +105,12 @@ class ConnectionSetup:
         return [t0, t1, t2, t3]
 
     def quat_rot_yup_zup(self, ori):
-        # temp = ori[1]
-        # ori[1] = -1*ori[2]
-        # ori[2] = temp
         # Motive's quat p -> Blender's quat p' = qpq^(-1)
-        # 180 on Y, -90 on X, 180 on Z
         q = [0, (1/math.sqrt(2)), (1/math.sqrt(2)), 0]
-        # q = [(1/math.sqrt(2)), 0, 0, (1/math.sqrt(2))]
-        # q^(-1) = [q0, -q1, -q2, -q3]
         q_inv = [0, -(1/math.sqrt(2)), -(1/math.sqrt(2)), 0]
-        # q_inv = [(1/math.sqrt(2)), 0, 0, -(1/math.sqrt(2))]
         p_1 = self.quat_product(q, ori)
         p_dash = self.quat_product(p_1, q_inv)
         return p_dash
-        # return ori
-    
-    def eul_loc_yup_zup(self, pos):
-        # Rot_matrix = [[-1, 0, 0], [0, 0, 1], [0, 1, 0]]
-        pos_copy = [-pos[0], pos[2], pos[1]]
-        return pos_copy
-    
-    def eul_rot_yup_zup(self, ori):
-        ori_copy = [-ori[0], ori[2], ori[1]]
-        return ori_copy
     
     def sca_first_last(self, ori):
         ori.append(ori.pop(0))
@@ -143,32 +122,9 @@ class ConnectionSetup:
     def quat_to_euler(self, ori):
         ori = mathutils.Quaternion(ori)
         ori = ori.to_matrix()
-        eul = ori.to_euler('ZYX') # somehow matches XYZ
-        # print("rad rot: ", [i for i in ori])
-        # print("deg rot: ", [i*57.296 for i in ori])
-
-        # custom function - values don't match
-        # # x-axis rotation (roll) -> Motive Z
-        # z = math.atan2(2 * ((ori.w * ori.x) + (ori.y * ori.z)), 1 - (2 * ((ori.x * ori.x) + (ori.y * ori.y)))) 
-        # # y-axis rotation (pitch) -> Motive X
-        # x = (2 * math.atan2(math.sqrt(1 + (2 * ((ori.w * ori.y) - (ori.x * ori.z)))), \
-        # math.sqrt(1 - (2 * ((ori.w * ori.y) - (ori.x * ori.z)))))) - (math.pi/2)
-        # # z-axis rotation (yaw) -> Motive Y
-        # y = math.atan2(2 * ((ori.w * ori.z) + (ori.x * ori.y)), 1 - (2 * ((ori.y * ori.y) + (ori.z * ori.z))))
-        
-        # custom function - XYZ answer
-        # x = math.atan2(-2*(ori.y*ori.z - ori.w*ori.x), ori.w*ori.w - ori.x*ori.x - ori.y*ori.y + ori.z*ori.z)
-        # y = math.asin ( 2*(ori.x*ori.z + ori.w*ori.y) )
-        # z = math.atan2(-2*(ori.x*ori.y - ori.w*ori.z), ori.w*ori.w + ori.x*ori.x - ori.y*ori.y - ori.z*ori.z)
-        # x = -self.sign(x) * (math.pi - abs(x))
-        # z = -self.sign(z) * (math.pi - abs(z))
-        
-        # eul = [x, y, z]
-        # euler = [i*57.29578 for i in eul]
-        # print("euler: ", euler)
+        eul = ori.to_euler('ZYX')
         return eul
     
-    # This is a callback function that gets connected to the NatNet client. It is called once per rigid body per frame
     def receive_rigid_body_frame(self, new_id, position, rotation, frame_number):
         if new_id in self.rigid_bodies_blender:
             # Y-Up
@@ -181,13 +137,6 @@ class ConnectionSetup:
             
             # (x, y, z, w) -> (w, x, y, z)
             rot = self.sca_first_last(rot)
-            
-            # quats -> euler
-            # rot = self.quat_to_euler(rot)
-            
-            # z-up with eulers
-            # pos = self.eul_loc_yup_zup(position)
-            # rot = self.eul_rot_yup_zup(rot)
             
             values = (new_id, pos, rot, frame_number)
             self.l.acquire()
@@ -205,17 +154,12 @@ class ConnectionSetup:
             try:
                 if not self.q.empty(): 
                     q_val = self.q.get()
-                    try:    
-                        # bpy.context.scene.frame_set()
-                        # obj.data.keyframe_insert() instead
-                        
+                    try:                        
                         # no definitive keyframes
                         if bpy.context.window_manager.record2_status == True:
                             bpy.context.window_manager.record1_status = False
-                            # print("loc out: ", q_val[1])
                             if bpy.context.scene.frame_end <= q_val[3]:
                                 bpy.context.scene.frame_end = q_val[3]
-                            # if bpy.context.scene.frame_current != q_val[3]:
                             bpy.context.scene.frame_set(q_val[3])
                             my_obj = self.rigid_bodies_blender[q_val[0]] # new_id
                             my_obj.location = q_val[1]
@@ -223,28 +167,22 @@ class ConnectionSetup:
                             my_obj.rotation_mode = 'QUATERNION'
                             my_obj.rotation_quaternion = q_val[2]
                             my_obj.keyframe_insert(data_path="rotation_quaternion",frame=q_val[3])
-                            # my_obj.rotation_mode = 'XYZ'
-                            # my_obj.rotation_euler = q_val[2]
-                            # my_obj.keyframe_insert(data_path="rotation_euler",frame=q_val[3])
 
                         # selective keyframes
                         elif bpy.context.window_manager.record1_status == True:
                             bpy.context.window_manager.record2_status = False
                             if bpy.context.scene.frame_start <= q_val[3] <= bpy.context.scene.frame_end:
                                 bpy.context.scene.frame_set(q_val[3])
-                                my_obj = self.rigid_bodies_blender[q_val[0]] # new_id
+                                my_obj = self.rigid_bodies_blender[q_val[0]]
                                 my_obj.location = q_val[1]
                                 my_obj.keyframe_insert(data_path="location", frame=q_val[3])
                                 my_obj.rotation_mode = 'QUATERNION'
                                 my_obj.rotation_quaternion = q_val[2]
                                 my_obj.keyframe_insert(data_path="rotation_quaternion",frame=q_val[3])
-                                # my_obj.rotation_mode = 'XYZ'
-                                # my_obj.rotation_euler = q_val[2]
-                                # my_obj.keyframe_insert(data_path="rotation_euler",frame=q_val[3])
                         
                         else:
                             # no recording
-                            my_obj = self.rigid_bodies_blender[q_val[0]] # new_id
+                            my_obj = self.rigid_bodies_blender[q_val[0]]
                             my_obj.location = q_val[1]
                             my_obj.rotation_mode = 'QUATERNION'
                             my_obj.rotation_quaternion = q_val[2]
@@ -329,7 +267,6 @@ class RefreshAssetsOperator(Operator):
         if context.window_manager.start_status:
             existing_connection.pause_button_clicked(context)
         return {'FINISHED'}
-
 
 class StartOperator(Operator):
     bl_idname = "wm.start_button"
@@ -434,7 +371,6 @@ class ResetOperator(Operator):
         
         existing_connection = None
         
-        # Delete all custom properties of each object from collection of properties
         for attr in dir(bpy.data):
             if "bpy_prop_collection" in str(type(getattr(bpy.data, attr))):
                 for obj in getattr(bpy.data, attr):
