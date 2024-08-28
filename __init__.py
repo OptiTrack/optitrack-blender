@@ -5,7 +5,7 @@ bl_info = {
     "version": (1, 0, 0),
     "blender": (4, 1, 0),
     "location": "View3D > Toolbar > Motive",
-    "description": "live stream Motive data into blender",
+    "description": "Stream Motive asset data into Blender",
     "warning": "",
     "category": "OptiTrack",
 }
