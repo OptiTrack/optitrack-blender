@@ -85,6 +85,7 @@ class NatNetClient:
         # Set this to a callback method of your choice to receive per-rigid-body data at each frame.
         self.rigid_body_listener = None
         self.model_changed = None
+        self.motive_live = None
         self.new_frame_listener  = None
         self.rb_listener = None
 
@@ -777,9 +778,11 @@ class NatNetClient:
             offset += 2
         is_recording = ( param & 0x01 ) != 0
         tracked_models_changed = ( param & 0x02 ) != 0
+        live_mode = ( param & 0x03) != 0
         frame_suffix_data.param = param
         frame_suffix_data.is_recording = is_recording
         frame_suffix_data.tracked_models_changed = tracked_models_changed
+        frame_suffix_data.live_mode = live_mode
 
         return offset, frame_suffix_data
     
@@ -862,9 +865,13 @@ class NatNetClient:
         timestamp = frame_suffix_data.timestamp
         is_recording = frame_suffix_data.is_recording
         tracked_models_changed = frame_suffix_data.tracked_models_changed
+        live_mode = frame_suffix_data.live_mode
         
         if self.model_changed is not None:
             self.model_changed(tracked_models_changed)
+        
+        if self.motive_live is not None:
+            self.motive_live(live_mode)
         
         # if self.rb_listener is not None:
         #     rb_dict = {}
@@ -883,6 +890,7 @@ class NatNetClient:
             data_dict[ "timestamp"] = timestamp
             data_dict[ "is_recording"] = is_recording
             data_dict[ "tracked_models_changed"] = tracked_models_changed
+            data_dict[ "live_mode" ] = live_mode
             # data_dict["rigid_body_id"] = rigid_body_id
 
             self.new_frame_listener( data_dict )
