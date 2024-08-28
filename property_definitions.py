@@ -19,7 +19,7 @@ def update_frame_rate(self, context):
     bpy.context.scene.render.fps = bpy.context.scene.init_prop.frame_value
 
 def get_id_names(self, context):
-    enum_items = [('None', "Null", "None")]
+    enum_items = [('None', "None", "None")]
 
     existing_connection = ConnectOperator.connection_setup
     if existing_connection.rigid_bodies_motive:

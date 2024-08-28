@@ -153,7 +153,7 @@ class Recorder(Panel):
 # Object Properties Pane
 class AssignObjects(Panel):
     bl_idname = "OBJECT_PT_assign_objects"
-    bl_label = "OptiTrack Blender Plugin"
+    bl_label = "Motive: Assign Assets"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = "object"
@@ -163,7 +163,7 @@ class AssignObjects(Panel):
         layout = self.layout
 
         row = layout.row(align=True)
-        row.label(text="Assign Object", icon='ARROW_LEFTRIGHT')
+        row.label(text="Assign Rigid Body to Object:", icon='ARROW_LEFTRIGHT')
 
         layout.use_property_split = True
 
