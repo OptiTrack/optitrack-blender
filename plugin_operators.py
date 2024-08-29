@@ -26,6 +26,7 @@ class ConnectionSetup:
         self.q = Queue()
         self.l = Lock()
         self.is_running = None
+        self.frame_start = 0
         self.live_record = False
 
     def reset_to_initial(self):
@@ -38,6 +39,7 @@ class ConnectionSetup:
         self.q = Queue()
         self.l = Lock()
         self.is_running = None
+        self.frame_start = 0
         self.live_record = False
 
     def signal_model_changed(self, tracked_model_changed): # flag to keep checking if Motive .tak changed
@@ -169,10 +171,10 @@ class ConnectionSetup:
                             if bpy.context.window_manager.record2_status == True:
                                 bpy.context.window_manager.record1_status = False
                                 if self.live_record == False:
-                                    frame_start = q_val[3]
-                                    print("frame start: ", frame_start)
+                                    self.frame_start = q_val[3]
+                                    print("frame start: ", self.frame_start)
                                 self.live_record = True
-                                current_frame = q_val[3] - frame_start
+                                current_frame = (q_val[3] - self.frame_start)
                                 print("current_frame: ", current_frame)
                                 bpy.context.scene.frame_set(current_frame)
                                 my_obj = self.rigid_bodies_blender[q_val[0]] # new_id
@@ -181,6 +183,24 @@ class ConnectionSetup:
                                 my_obj.rotation_mode = 'QUATERNION'
                                 my_obj.rotation_quaternion = q_val[2]
                                 my_obj.keyframe_insert(data_path="rotation_quaternion",frame=current_frame)
+                            
+                            # selective keyframes
+                            elif bpy.context.window_manager.record1_status == True:
+                                bpy.context.window_manager.record2_status = False
+                                if self.live_record == False:
+                                    self.frame_start = q_val[3]
+                                    print("frame start: ", self.frame_start)
+                                self.live_record = True
+                                current_frame = (q_val[3] - self.frame_start)
+                                print("current_frame: ", current_frame)
+                                if bpy.context.scene.frame_start <= current_frame <= bpy.context.scene.frame_end:
+                                    bpy.context.scene.frame_set(current_frame)
+                                    my_obj = self.rigid_bodies_blender[q_val[0]]
+                                    my_obj.location = q_val[1]
+                                    my_obj.keyframe_insert(data_path="location", frame=current_frame)
+                                    my_obj.rotation_mode = 'QUATERNION'
+                                    my_obj.rotation_quaternion = q_val[2]
+                                    my_obj.keyframe_insert(data_path="rotation_quaternion",frame=current_frame)
 
                             # no recording
                             else:
