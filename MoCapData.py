@@ -734,6 +734,7 @@ class FrameSuffixData:
         self.param = 0
         self.is_recording = False
         self.tracked_models_changed = True
+        self.edit_mode = True
 
 
     def get_as_string(self, tab_str="  ", level=0):
