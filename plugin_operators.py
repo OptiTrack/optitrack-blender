@@ -19,7 +19,7 @@ class ConnectionSetup:
     def __init__(self):
         self.streaming_client = None
         self.indicate_model_changed = None
-        self.indicate_motive_live = None
+        self.indicate_motive_edit = None
         self.rigid_bodies_motive = {}
         self.rigid_bodies_blender = {} # ({ID: rigid_body} pair)
         self.rev_rigid_bodies_blender = {} # ({rigid_body: ID} pair)
@@ -31,7 +31,7 @@ class ConnectionSetup:
     def reset_to_initial(self):
         self.streaming_client = None
         self.indicate_model_changed = None
-        self.indicate_motive_live = None
+        self.indicate_motive_edit = None
         self.rigid_bodies_motive = {}
         self.rigid_bodies_blender = {}
         self.rev_rigid_bodies_blender = {} 
@@ -43,8 +43,8 @@ class ConnectionSetup:
     def signal_model_changed(self, tracked_model_changed): # flag to keep checking if Motive .tak changed
         self.indicate_model_changed = tracked_model_changed
     
-    def signal_motive_live(self, live_mode): # flag for live/edit mode in Motive
-        self.indicate_motive_live = live_mode
+    def signal_motive_edit(self, edit_mode): # flag for live/edit mode in Motive
+        self.indicate_motive_edit = edit_mode
 
     def connect_button_clicked(self, dict, context):
         if self.streaming_client is not None:
@@ -86,7 +86,7 @@ class ConnectionSetup:
         if context.window_manager.connection_status:
                 self.streaming_client.model_changed = self.signal_model_changed
                 self.streaming_client.rigid_body_listener = self.receive_rigid_body_frame
-                self.streaming_client.motive_live = self.signal_motive_live
+                self.streaming_client.motive_edit = self.signal_motive_edit
                 # Update start state
                 context.window_manager.start_status = True
 
@@ -164,14 +164,16 @@ class ConnectionSetup:
                     q_val = self.q.get()
                     try:
                         # live mode
-                        if self.signal_motive_live == True:
+                        if self.indicate_motive_edit == False:
                             # no definitive keyframes
                             if bpy.context.window_manager.record2_status == True:
                                 bpy.context.window_manager.record1_status = False
                                 if self.live_record == False:
                                     frame_start = q_val[3]
+                                    print("frame start: ", frame_start)
                                 self.live_record = True
                                 current_frame = q_val[3] - frame_start
+                                print("current_frame: ", current_frame)
                                 bpy.context.scene.frame_set(current_frame)
                                 my_obj = self.rigid_bodies_blender[q_val[0]] # new_id
                                 my_obj.location = q_val[1]
