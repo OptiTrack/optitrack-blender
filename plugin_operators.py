@@ -403,8 +403,8 @@ class StopFrameRecordOperator(Operator):
             context.window_manager.record1_status = False
         return {'FINISHED'}
 
-class clearKeyframesOperator(Operator):
-    bl_idname = "wm.clear_anim"
+class newActionOperator(Operator):
+    bl_idname = "wm.new_action"
     bl_description = "Creates a new Action to record data onto"
     bl_label = "Create New Action"
 

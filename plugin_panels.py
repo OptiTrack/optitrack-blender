@@ -145,8 +145,8 @@ class Recorder(Panel):
                                 icon_value = IconsLoader.get_icon("Record"))
             
             row = layout.row(align=True)
-            row.operator(plugin_operators.clearKeyframesOperator.bl_idname, \
-                         text=plugin_operators.clearKeyframesOperator.bl_label)
+            row.operator(plugin_operators.newActionOperator.bl_idname, \
+                         text=plugin_operators.newActionOperator.bl_label)
         else:
             row.label(text="Start the connection first")
 
