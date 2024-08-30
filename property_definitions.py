@@ -64,7 +64,7 @@ class CustomSceneProperties(PropertyGroup):
                                     description="IP of Blender",
                                     default="127.0.0.1")
 
-    unit_setting : EnumProperty(name="Unit system",
+    unit_setting : EnumProperty(name="Unit System",
                                     description="change unit settings",
                                     default='Metric',
                                     update=update_unit_settings,
@@ -77,8 +77,8 @@ class CustomSceneProperties(PropertyGroup):
     
     fps_value : IntProperty(name="Frame Rate", default=120, min=1, max=1000)
     
-    default_settings: BoolProperty(name="Keep configuration", 
-                                   description="Configure scene to above settings",
+    default_settings: BoolProperty(name="Save Configuration", 
+                                   description="Unit System, Unit Scale and Frame Rate settings in this panel will override Blender's settings. Enable ""Save Configuration"" to retain settings for the next Blender session",
                                    default=True)
     
     custom_recording: BoolProperty(name="Record Frame Range", default=False)

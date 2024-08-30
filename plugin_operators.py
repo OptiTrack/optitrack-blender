@@ -405,8 +405,8 @@ class StopFrameRecordOperator(Operator):
 
 class clearKeyframesOperator(Operator):
     bl_idname = "wm.clear_anim"
-    bl_description = "Remove ALL keyframes for the selected object"
-    bl_label = "Clear Keyframes"
+    bl_description = "Creates a new Action to record data onto"
+    bl_label = "Create New Action"
 
     def execute(self, context):
         if context.view_layer.objects.active:
