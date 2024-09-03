@@ -189,10 +189,8 @@ class ConnectionSetup:
                                 bpy.context.window_manager.record2_status = False
                                 if self.live_record == False:
                                     self.frame_start = q_val[3]
-                                    print("frame start: ", self.frame_start)
                                 self.live_record = True
                                 current_frame = (q_val[3] - self.frame_start)
-                                print("current_frame: ", current_frame)
                                 if bpy.context.scene.frame_start <= current_frame <= bpy.context.scene.frame_end:
                                     bpy.context.scene.frame_set(current_frame)
                                     my_obj = self.rigid_bodies_blender[q_val[0]]
