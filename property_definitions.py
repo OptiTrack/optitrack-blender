@@ -77,8 +77,8 @@ class CustomSceneProperties(PropertyGroup):
     
     fps_value : IntProperty(name="Frame Rate", default=120, min=1, max=1000)
     
-    default_settings: BoolProperty(name="Save Configuration", 
-                                   description="Unit System, Unit Scale and Frame Rate settings in this panel will override Blender's settings. Enable ""Save Configuration"" to retain settings for the next Blender session",
+    default_settings: BoolProperty(name="Apply Configuration", 
+                                   description="Unit System, Unit Scale and Frame Rate settings in this panel will override Blender's settings. Enable Apply Configuration to confirm and overwrite Blenders settings",
                                    default=True)
     
     custom_recording: BoolProperty(name="Record Frame Range", default=False)
