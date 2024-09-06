@@ -16,10 +16,10 @@ def update_unit_scale(self, context):
     bpy.context.scene.unit_settings.scale_length = bpy.context.scene.init_prop.scale
 
 def update_frame_rate(self, context):
-    bpy.context.scene.render.fps = bpy.context.scene.init_prop.frame_value
+    bpy.context.scene.render.fps = bpy.context.scene.init_prop.fps_value
 
 def get_id_names(self, context):
-    enum_items = [('None', "Null", "None")]
+    enum_items = [('None', "None", "None")]
 
     existing_connection = ConnectOperator.connection_setup
     if existing_connection.rigid_bodies_motive:
@@ -64,7 +64,7 @@ class CustomSceneProperties(PropertyGroup):
                                     description="IP of Blender",
                                     default="127.0.0.1")
 
-    unit_setting : EnumProperty(name="Unit system",
+    unit_setting : EnumProperty(name="Unit System",
                                     description="change unit settings",
                                     default='Metric',
                                     update=update_unit_settings,
@@ -75,10 +75,10 @@ class CustomSceneProperties(PropertyGroup):
     
     scale : FloatProperty(name="Unit Scale", default=1, update=update_unit_scale, precision=3)
     
-    fps_value : IntProperty(name="Frame Rate", default=120, min=1, max=1000)
+    fps_value : IntProperty(name="Frame Rate", default=120, min=1, max=1000, update=update_frame_rate)
     
-    default_settings: BoolProperty(name="Keep configuration", 
-                                   description="Configure scene to above settings",
+    default_settings: BoolProperty(name="Apply Configuration", 
+                                   description="Unit System, Unit Scale and Frame Rate settings in this panel will override Blender's settings. Enable Apply Configuration to confirm and overwrite Blenders settings",
                                    default=True)
     
     custom_recording: BoolProperty(name="Record Frame Range", default=False)
