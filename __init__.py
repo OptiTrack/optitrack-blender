@@ -49,6 +49,7 @@ def register():
                plugin_operators.StartFrameRecordOperator, 
                plugin_operators.StopFrameRecordOperator,
                plugin_operators.newActionOperator,
+               plugin_operators.deleteActionOperator,
                plugin_panels.Info]
 
     for cls in classes:
