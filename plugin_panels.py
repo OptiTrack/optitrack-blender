@@ -38,12 +38,6 @@ class InitialSettings(Panel):
         row.label(text="Set Transmission Type to")
         row = box2.row(align=True)
         row.label(text="Multicast in Streaming Settings.")
-        box.prop(initprop, 'unit_setting')
-        box.prop(initprop, 'scale')
-        box.prop(initprop, 'fps_value')
-
-        row = layout.row(align=True)
-        row.prop(initprop, 'default_settings')
 
 class Connection(Panel):
     bl_idname = "VIEW3D_PT_connection"
@@ -147,6 +141,10 @@ class Recorder(Panel):
             row = layout.row(align=True)
             row.operator(plugin_operators.newActionOperator.bl_idname, \
                          text=plugin_operators.newActionOperator.bl_label)
+            
+            row = layout.row(align=True)
+            row.operator(plugin_operators.deleteActionOperator.bl_idname, \
+                         text=plugin_operators.deleteActionOperator.bl_label)
         else:
             row.label(text="Start the connection first")
 

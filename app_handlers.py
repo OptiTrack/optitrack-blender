@@ -3,24 +3,13 @@ from bpy.app.handlers import persistent
 from .plugin_operators import ConnectOperator
 from .property_definitions import CustomObjectProperties
 
-def reset_to_default(scene):
-    for scene in bpy.data.scenes:
-        initprop = scene.init_prop
-        if initprop.default_settings and initprop.unit_setting == initprop.bl_rna.properties['unit_setting'].default:
-            initprop.unit_setting = initprop.bl_rna.properties['unit_setting'].default
-        
-        if initprop.default_settings and initprop.scale == initprop.bl_rna.properties['scale'].default:
-            initprop.scale = initprop.bl_rna.properties['scale'].default
-        
-        if initprop.default_settings and initprop.fps_value == initprop.bl_rna.properties['fps_value'].default:
-            initprop.fps_value = initprop.bl_rna.properties['fps_value'].default
-
 @persistent
 def object_prop_handler(scene):
-    for obj in scene.objects:
-        if not hasattr(obj, "obj_prop"):
-            obj.obj_prop = bpy.props.PointerProperty(type=CustomObjectProperties)
-        obj.obj_prop.obj_name = obj.name
+    for scene in bpy.data.scenes:    
+        for obj in scene.objects:
+            if not hasattr(obj, "obj_prop"):
+                obj.obj_prop = bpy.props.PointerProperty(type=CustomObjectProperties)
+            obj.obj_prop.obj_name = obj.name
 
 @persistent
 def object_deleted_handler(scene):
@@ -32,7 +21,7 @@ def object_deleted_handler(scene):
                 deleted_ids = []
                 for obj in existing_connection.rev_rigid_bodies_blender:
                     if str(obj) == "<bpy_struct, Object invalid>":
-                        deleted_ids.append(existing_connection.rev_rigid_bodies_blender[obj])    
+                        deleted_ids.append(existing_connection.rev_rigid_bodies_blender[obj])
                 
                 if deleted_ids:
                     for id in deleted_ids:
