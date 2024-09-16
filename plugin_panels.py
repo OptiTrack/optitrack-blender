@@ -183,7 +183,7 @@ class AssignObjects(Panel):
 
 class AllocatedObjects(Panel):
     bl_idname = "OBJECT_PT_allocated_objects"
-    bl_label = "Motive: Allocated Assets"
+    bl_label = "Motive: Assets in Use"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = "object"
