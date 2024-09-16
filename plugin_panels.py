@@ -177,17 +177,33 @@ class AssignObjects(Panel):
                         row = layout.row(align=True)
                         obj_name = obj.name
                         row.prop(objprop, 'rigid_bodies', text=obj_name)
-
-                if existing_conn.rev_rigid_bodies_blender:
-                    for key, val in existing_conn.rev_rigid_bodies_blender.items():
-                        row = layout.row(align=True)
-                        row.alert = True
-                        row.label(text= key.name + " : " + str(val) + " : " + \
-                                  str(existing_conn.rigid_bodies_motive[val]))
-
         else:
             row = layout.row(align=True)
             row.label(text="None")
+
+class AllocatedObjects(Panel):
+    bl_idname = "OBJECT_PT_allocated_objects"
+    bl_label = "Motive: Allocated Assets"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "object"
+    bl_parent_id = 'OBJECT_PT_assign_objects'
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        return bool(plugin_operators.ConnectOperator.connection_setup.rev_rigid_bodies_blender)
+    
+    def draw(self, context):
+        existing_conn = plugin_operators.ConnectOperator.connection_setup
+        if existing_conn.rev_rigid_bodies_blender:
+            layout = self.layout
+            for key, val in existing_conn.rev_rigid_bodies_blender.items():
+                row = layout.row(align=True)
+                row.alert = True
+                row.label(text= key.name + " : " + str(val) + " : " + \
+                            str(existing_conn.rigid_bodies_motive[val]))
+
 
 class Info(Panel):
     bl_idname = "VIEW3D_PT_info"
