@@ -300,8 +300,8 @@ class ConnectOperator(Operator):
             conn.connect_button_clicked(optionsDict, context)
             conn.request_data_descriptions(conn.streaming_client, context)
             print("connected")
-            from .app_handlers import reset_to_default
-            reset_to_default(context.scene)
+            from .app_handlers import object_prop_handler
+            object_prop_handler(context.scene)
         except Exception as e:
             conn.streaming_client = None
             context.window_manager.connection_status = False
@@ -411,6 +411,21 @@ class newActionOperator(Operator):
             obj = context.view_layer.objects.active
             obj.select_set(True)
             obj.animation_data_clear()
+        return {'FINISHED'}
+
+class deleteActionOperator(Operator):
+    bl_idname = "wm.delete_action"
+    bl_description = "Delete the most recent action from Action Editor"
+    bl_label = "Delete Action"
+
+    def execute(self, context):
+        # bpy.context.area.type = 'DOPESHEET_EDITOR'
+        # bpy.context.space_data.mode = 'ACTION'
+        action = bpy.data.actions[-1] # Get the most recent action
+        print(action)
+        bpy.context.object.animation_data.action = action # Set the action as active
+        bpy.data.actions.remove(action)
+        # bpy.ops.action.delete() # Delete the action
         return {'FINISHED'}
 
 class ResetOperator(Operator): 

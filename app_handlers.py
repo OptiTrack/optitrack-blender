@@ -3,18 +3,6 @@ from bpy.app.handlers import persistent
 from .plugin_operators import ConnectOperator
 from .property_definitions import CustomObjectProperties
 
-def reset_to_default(scene):
-    for scene in bpy.data.scenes:
-        initprop = scene.init_prop
-        if initprop.default_settings and initprop.unit_setting == initprop.bl_rna.properties['unit_setting'].default:
-            initprop.unit_setting = initprop.bl_rna.properties['unit_setting'].default
-        
-        if initprop.default_settings and initprop.scale == initprop.bl_rna.properties['scale'].default:
-            initprop.scale = initprop.bl_rna.properties['scale'].default
-        
-        if initprop.default_settings and initprop.fps_value == initprop.bl_rna.properties['fps_value'].default:
-            initprop.fps_value = initprop.bl_rna.properties['fps_value'].default
-
 @persistent
 def object_handler(scene):
     if bpy.context.window_manager.connection_status == True:
