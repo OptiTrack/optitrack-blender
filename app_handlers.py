@@ -16,29 +16,35 @@ def reset_to_default(scene):
             initprop.fps_value = initprop.bl_rna.properties['fps_value'].default
 
 @persistent
-def object_prop_handler(scene):
-    for obj in scene.objects:
-        if not hasattr(obj, "obj_prop"):
-            obj.obj_prop = bpy.props.PointerProperty(type=CustomObjectProperties)
-        obj.obj_prop.obj_name = obj.name
-
-@persistent
-def object_deleted_handler(scene):
-    if bpy.context.window_manager.operators:
-        last_operator = bpy.context.window_manager.operators[-1].bl_idname
-        if last_operator == "OBJECT_OT_delete" or last_operator == "OUTLINER_OT_delete":
-            if bpy.context.window_manager.connection_status == True:
-                existing_connection = ConnectOperator.connection_setup
+def object_handler(scene):
+    if bpy.context.window_manager.connection_status == True:
+        existing_connection = ConnectOperator.connection_setup
+        if bpy.context.window_manager.operators:
+            last_operator = bpy.context.window_manager.operators[-1].bl_idname
+            if last_operator == "OBJECT_OT_delete" or last_operator == "OUTLINER_OT_delete":    
                 deleted_ids = []
-                for obj in existing_connection.rev_rigid_bodies_blender:
-                    if str(obj) == "<bpy_struct, Object invalid>":
-                        deleted_ids.append(existing_connection.rev_rigid_bodies_blender[obj])    
+                for key in existing_connection.rev_rigid_bodies_blender:
+                    if str(existing_connection.rev_rigid_bodies_blender[key]['obj']) == "<bpy_struct, Object invalid>":
+                        deleted_ids.append(key)
                 
                 if deleted_ids:
                     for id in deleted_ids:
-                        del existing_connection.rev_rigid_bodies_blender[existing_connection.rigid_bodies_blender[id]]
-                        del existing_connection.rigid_bodies_blender[id]
+                        if existing_connection.rev_rigid_bodies_blender[id]['m_ID'] == None:
+                            del existing_connection.rev_rigid_bodies_blender[id]
+                        else:
+                            del existing_connection.rigid_bodies_blender[existing_connection.rev_rigid_bodies_blender[id]['m_ID']]
+                            del existing_connection.rev_rigid_bodies_blender[id]
                         print("Object deleted, ID: ", id)
+        
+        for obj in bpy.data.objects:
+            if obj.id_data.session_uid not in existing_connection.rev_rigid_bodies_blender:
+                existing_connection.rev_rigid_bodies_blender[obj.id_data.session_uid] = {'obj': obj, 'm_ID': None}
+            else:
+                existing_connection.rev_rigid_bodies_blender[obj.id_data.session_uid]['obj'] = obj
+            
+            if not hasattr(obj, "obj_prop"):
+                obj.obj_prop = bpy.props.PointerProperty(type=CustomObjectProperties)
+            obj.obj_prop.obj_name = obj.name
 
 @persistent
 def model_change_handler(scene):

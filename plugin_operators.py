@@ -21,8 +21,8 @@ class ConnectionSetup:
         self.indicate_model_changed = None
         self.indicate_motive_edit = None
         self.rigid_bodies_motive = {}
-        self.rigid_bodies_blender = {} # ({ID: rigid_body} pair)
-        self.rev_rigid_bodies_blender = {} # ({rigid_body: ID} pair)
+        self.rigid_bodies_blender = {} # ({m_ID: b_ID} pair)
+        self.rev_rigid_bodies_blender = {} # ({b_ID: {object, m_ID}} pair)
         self.q = Queue()
         self.l = Lock()
         self.is_running = None
@@ -177,7 +177,7 @@ class ConnectionSetup:
                                 current_frame = (q_val[3] - self.frame_start)
                                 print("current_frame: ", current_frame)
                                 bpy.context.scene.frame_set(current_frame)
-                                my_obj = self.rigid_bodies_blender[q_val[0]] # new_id
+                                my_obj = self.rev_rigid_bodies_blender[self.rigid_bodies_blender[q_val[0]]]['obj'] # new_id
                                 my_obj.location = q_val[1]
                                 my_obj.keyframe_insert(data_path="location", frame=current_frame)
                                 my_obj.rotation_mode = 'QUATERNION'
@@ -193,7 +193,7 @@ class ConnectionSetup:
                                 current_frame = (q_val[3] - self.frame_start)
                                 if bpy.context.scene.frame_start <= current_frame <= bpy.context.scene.frame_end:
                                     bpy.context.scene.frame_set(current_frame)
-                                    my_obj = self.rigid_bodies_blender[q_val[0]]
+                                    my_obj = self.rev_rigid_bodies_blender[self.rigid_bodies_blender[q_val[0]]]['obj']
                                     my_obj.location = q_val[1]
                                     my_obj.keyframe_insert(data_path="location", frame=current_frame)
                                     my_obj.rotation_mode = 'QUATERNION'
@@ -202,7 +202,7 @@ class ConnectionSetup:
 
                             # no recording
                             else:
-                                my_obj = self.rigid_bodies_blender[q_val[0]]
+                                my_obj = self.rev_rigid_bodies_blender[self.rigid_bodies_blender[q_val[0]]]['obj']
                                 my_obj.location = q_val[1]
                                 my_obj.rotation_mode = 'QUATERNION'
                                 my_obj.rotation_quaternion = q_val[2]
@@ -215,7 +215,7 @@ class ConnectionSetup:
                                 if bpy.context.scene.frame_end <= q_val[3]:
                                     bpy.context.scene.frame_end = q_val[3]
                                 bpy.context.scene.frame_set(q_val[3])
-                                my_obj = self.rigid_bodies_blender[q_val[0]] # new_id
+                                my_obj = self.rev_rigid_bodies_blender[self.rigid_bodies_blender[q_val[0]]]['obj'] # new_id
                                 my_obj.location = q_val[1]
                                 my_obj.keyframe_insert(data_path="location", frame=q_val[3])
                                 my_obj.rotation_mode = 'QUATERNION'
@@ -227,7 +227,7 @@ class ConnectionSetup:
                                 bpy.context.window_manager.record2_status = False
                                 if bpy.context.scene.frame_start <= q_val[3] <= bpy.context.scene.frame_end:
                                     bpy.context.scene.frame_set(q_val[3])
-                                    my_obj = self.rigid_bodies_blender[q_val[0]]
+                                    my_obj = self.rev_rigid_bodies_blender[self.rigid_bodies_blender[q_val[0]]]['obj']
                                     my_obj.location = q_val[1]
                                     my_obj.keyframe_insert(data_path="location", frame=q_val[3])
                                     my_obj.rotation_mode = 'QUATERNION'
@@ -236,7 +236,7 @@ class ConnectionSetup:
 
                             # no recording
                             else:
-                                my_obj = self.rigid_bodies_blender[q_val[0]]
+                                my_obj = self.rev_rigid_bodies_blender[self.rigid_bodies_blender[q_val[0]]]['obj']
                                 my_obj.location = q_val[1]
                                 my_obj.rotation_mode = 'QUATERNION'
                                 my_obj.rotation_quaternion = q_val[2]
