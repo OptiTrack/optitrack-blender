@@ -300,9 +300,10 @@ class ConnectOperator(Operator):
             conn.connect_button_clicked(optionsDict, context)
             conn.request_data_descriptions(conn.streaming_client, context)
             print("connected")
-            from .app_handlers import object_prop_handler
-            object_prop_handler(context.scene)
+            from .app_handlers import object_handler
+            object_handler(context.scene)
         except Exception as e:
+            print("error: ", e)
             conn.streaming_client = None
             context.window_manager.connection_status = False
             self.report({'ERROR'}, f"Your Motive is not set to Multicast")

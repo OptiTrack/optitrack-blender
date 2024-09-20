@@ -65,7 +65,7 @@ def model_change_handler(scene):
 @persistent
 def load_handler(dummy):
     print("handler loaded")
-    if ConnectOperator.connection_setup is not None:    
+    if ConnectOperator.connection_setup is not None: 
         existing_connection = ConnectOperator.connection_setup
         if existing_connection.streaming_client is not None:
             existing_connection.streaming_client.shutdown()
