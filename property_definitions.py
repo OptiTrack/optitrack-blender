@@ -16,21 +16,15 @@ def get_id_names(self, context):
     return enum_items
 
 def update_list(self, context):
-    id = self.rigid_bodies
+    m_id = self.rigid_bodies
     current_obj = bpy.data.objects[self.obj_name]
+    b_obj_id = current_obj.id_data.session_uid
     existing_conn = ConnectOperator.connection_setup
-    if current_obj in existing_conn.rev_rigid_bodies_blender:
-        del existing_conn.rigid_bodies_blender[existing_conn.rev_rigid_bodies_blender[current_obj]]
-        del existing_conn.rev_rigid_bodies_blender[current_obj]
 
-    if id != "None":
-        id = int(id)
-        if id in existing_conn.rigid_bodies_blender:
-            del existing_conn.rev_rigid_bodies_blender[existing_conn.rigid_bodies_blender[id]]
-            del existing_conn.rigid_bodies_blender[id]
-        
-        existing_conn.rigid_bodies_blender[id] = current_obj
-        existing_conn.rev_rigid_bodies_blender[current_obj] = id
+    if m_id != "None":
+        m_id = int(m_id)
+        existing_conn.rigid_bodies_blender[m_id] = b_obj_id
+        existing_conn.rev_rigid_bodies_blender[b_obj_id] = {'obj': current_obj, 'm_ID': m_id}
 
 class CustomObjectProperties(PropertyGroup):
     rigid_bodies : EnumProperty(name="Rigid Body", 

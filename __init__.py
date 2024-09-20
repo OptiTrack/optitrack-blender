@@ -53,9 +53,8 @@ def register():
     bpy.types.Scene.init_prop = bpy.props.PointerProperty(
         type=property_definitions.CustomSceneProperties)
     bpy.types.Object.obj_prop = bpy.props.PointerProperty(
-        type=property_definitions.CustomObjectProperties)
-    bpy.app.handlers.depsgraph_update_post.append(app_handlers.object_deleted_handler)
-    bpy.app.handlers.depsgraph_update_post.append(app_handlers.object_prop_handler)
+        type=property_definitions.CustomObjectProperties)    
+    bpy.app.handlers.depsgraph_update_post.append(app_handlers.object_handler)
     bpy.app.handlers.depsgraph_update_pre.append(app_handlers.model_change_handler)
     bpy.app.handlers.load_post.append(app_handlers.load_handler)
 
@@ -69,12 +68,12 @@ def unregister():
     del bpy.types.Scene.init_prop
     del bpy.types.Object.obj_prop
     icon_viewer.IconsLoader.unregistering_icons()
-    if app_handlers.object_deleted_handler in bpy.app.handlers.depsgraph_update_post:
-        bpy.app.handlers.depsgraph_update_post.remove(app_handlers.object_deleted_handler)
-    if app_handlers.object_prop_handler in bpy.app.handlers.depsgraph_update_post:    
-        bpy.app.handlers.depsgraph_update_post.remove(app_handlers.object_prop_handler)
+
+    if app_handlers.object_handler in bpy.app.handlers.depsgraph_update_post:
+        bpy.app.handlers.depsgraph_update_post.remove(app_handlers.object_handler)
     if app_handlers.model_change_handler in bpy.app.handlers.depsgraph_update_pre:
         bpy.app.handlers.depsgraph_update_pre.remove(app_handlers.model_change_handler)
+    
     bpy.app.handlers.load_post.remove(app_handlers.load_handler)
     
 if __name__ == "__main__":
