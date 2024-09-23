@@ -21,8 +21,8 @@ class ConnectionSetup:
         self.indicate_model_changed = None
         self.indicate_motive_edit = None
         self.rigid_bodies_motive = {}
-        self.rigid_bodies_blender = {} # ({m_ID: b_ID} pair)
-        self.rev_rigid_bodies_blender = {} # ({b_ID: {object, m_ID}} pair)
+        self.rigid_bodies_blender = {} # ({motive_ID: blender_ID} pair)
+        self.rev_rigid_bodies_blender = {} # ({blender_ID: {object, motive_ID}} pair)
         self.q = Queue()
         self.l = Lock()
         self.is_running = None

@@ -9,14 +9,14 @@ def object_handler(scene):
         existing_connection = ConnectOperator.connection_setup
         if bpy.context.window_manager.operators:
             last_operator = bpy.context.window_manager.operators[-1].bl_idname
-            if last_operator == "OBJECT_OT_delete" or last_operator == "OUTLINER_OT_delete":    
+            if last_operator == "OBJECT_OT_delete" or last_operator == "OUTLINER_OT_delete": # check if any object is deleted with the scene update
                 deleted_ids = []
                 for key in existing_connection.rev_rigid_bodies_blender:
                     if str(existing_connection.rev_rigid_bodies_blender[key]['obj']) == "<bpy_struct, Object invalid>":
                         deleted_ids.append(key)
                 
                 if deleted_ids:
-                    for id in deleted_ids:
+                    for id in deleted_ids: # if object deleted, update the dictionaries accordingly
                         if existing_connection.rev_rigid_bodies_blender[id]['m_ID'] == None:
                             del existing_connection.rev_rigid_bodies_blender[id]
                         else:
@@ -24,18 +24,18 @@ def object_handler(scene):
                             del existing_connection.rev_rigid_bodies_blender[id]
                         print("Object deleted, ID: ", id)
         
-        for obj in bpy.data.objects:
-            if obj.id_data.session_uid not in existing_connection.rev_rigid_bodies_blender:
-                existing_connection.rev_rigid_bodies_blender[obj.id_data.session_uid] = {'obj': obj, 'm_ID': None}
+        for obj in bpy.data.objects: # update the dictionary every time the scene updates
+            uid = obj.id_data.session_uid # session-wide identifier for the data block
+            if uid not in existing_connection.rev_rigid_bodies_blender:
+                existing_connection.rev_rigid_bodies_blender[uid] = {'obj': obj, 'm_ID': None}
             else:
-                existing_connection.rev_rigid_bodies_blender[obj.id_data.session_uid]['obj'] = obj
-            
+                existing_connection.rev_rigid_bodies_blender[uid]['obj'] = obj
             if not hasattr(obj, "obj_prop"):
                 obj.obj_prop = bpy.props.PointerProperty(type=CustomObjectProperties)
-            obj.obj_prop.obj_name = obj.name
+            obj.obj_prop.obj_name = obj.name # assign object's name as one of the custom properties
 
 @persistent
-def model_change_handler(scene):
+def model_change_handler(scene): # if Motive's .tak is changed with already established connection in Blender
     if ConnectOperator.connection_setup is not None:  
         existing_connection = ConnectOperator.connection_setup
         if existing_connection.streaming_client is not None:
@@ -63,7 +63,7 @@ def model_change_handler(scene):
                         del scene[prop_name]
 
 @persistent
-def load_handler(dummy):
+def load_handler(dummy): # every time a new file is loaded or created in Blender
     print("handler loaded")
     if ConnectOperator.connection_setup is not None: 
         existing_connection = ConnectOperator.connection_setup

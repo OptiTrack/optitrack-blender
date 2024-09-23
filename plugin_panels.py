@@ -191,7 +191,7 @@ class AllocatedObjects(Panel):
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
-    def poll(cls, context):
+    def poll(cls, context): # sub panel created only if there are assigned motive objects to show
         return bool(plugin_operators.ConnectOperator.connection_setup.rev_rigid_bodies_blender)
     
     def draw(self, context):
