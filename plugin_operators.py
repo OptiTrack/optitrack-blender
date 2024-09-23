@@ -61,8 +61,7 @@ class ConnectionSetup:
                 sz_commands = [ "SetProperty,,Labeled Markers,false",
                                 "SetProperty,,Unlabeled Markers,false",
                                 "SetProperty,,Asset Markers,false",
-                                "SetProperty,,Rigid Bodies,true"
-                                "SetProperty,,Skeletons,false",
+                                "SetProperty,,Rigid Bodies,true",
                                 "SetProperty,,Trained Markerset Markers,false",
                                 "SetProperty,,Trained Markerset Bones,false",
                                 "SetProperty,,Devices,false",
