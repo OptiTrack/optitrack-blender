@@ -161,25 +161,29 @@ class AssignObjects(Panel):
         layout = self.layout
 
         row = layout.row(align=True)
-        row.label(text="Assign Rigid Body to Object:", icon='ARROW_LEFTRIGHT')
+        row.label(text="Assign Rigid Body to Blender Object:", icon='ARROW_LEFTRIGHT')
 
         layout.use_property_split = True
 
         existing_conn = plugin_operators.ConnectOperator.connection_setup
         # bad_obj_types = ['CAMERA', 'LIGHT']
         if existing_conn.streaming_client:
-            existing_conn.get_rigid_body_dict(context)            
+            existing_conn.get_rigid_body_dict(context)
             if existing_conn.rigid_bodies_motive:
-                for obj in bpy.data.objects:
+                # for obj in bpy.data.objects:
                     # if obj.type not in bad_obj_types:
-                    if obj.select_get(): # == bpy.context.active_object:
-                        objprop = obj.obj_prop
-                        row = layout.row(align=True)
-                        obj_name = obj.name
-                        row.prop(objprop, 'rigid_bodies', text=obj_name)
+                if bpy.context.active_object.select_get(): # == 
+                    obj = bpy.context.active_object
+                    objprop = obj.obj_prop
+                    row = layout.row(align=True)
+                    obj_name = obj.name
+                    row.prop(objprop, 'rigid_bodies', text=obj_name)
+                else:
+                    row = layout.row(align=True)
+                    row.label(text="Select an object.")
         else:
             row = layout.row(align=True)
-            row.label(text="None")
+            row.label(text="Start the connection.")
 
 class AllocatedObjects(Panel):
     bl_idname = "OBJECT_PT_allocated_objects"
