@@ -22,9 +22,6 @@ import copy
 import time
 from . import DataDescriptions
 from . import MoCapData
-# rigid_body_dict = {}
-# import DataDescriptions
-# import MoCapData
 
 def trace( *args ):
     # uncomment the one you want to use
@@ -84,10 +81,11 @@ class NatNetClient:
 
         # Set this to a callback method of your choice to receive per-rigid-body data at each frame.
         self.rigid_body_listener = None
-        self.model_changed = None
-        self.motive_edit = None
+        # self.model_changed = None
+        # self.motive_edit = None
         self.new_frame_listener  = None
         self.rb_listener = None
+        self.data_listener = None
 
         # Set Application Name
         self.__application_name = "Not Set"
@@ -497,73 +495,210 @@ class NatNetClient:
 
         return offset, rigid_body_data
 
+    # def __unpack_skeleton_rigid_body( self, data, major, minor, rb_num):
+    #     offset = 0
+
+    #     # ID (4 bytes)
+    #     offset += 4
+
+    #     # Position and orientation
+    #     offset += 12 # pos
+    #     offset += 16 # ori
+
+    #     # RB Marker Data ( Before version 3.0.  After Version 3.0 Marker data is in description )
+    #     if( major < 3  and major != 0) :
+    #         # Marker count (4 bytes)
+    #         marker_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
+    #         offset += 4
+
+    #         # Marker positions
+    #         for i in range( 0, marker_count ):
+    #             offset += 12
+
+    #         if major >= 2:
+    #             # Marker ID's
+    #             for i in range( 0, marker_count ):
+    #                 offset += 4
+
+    #             # Marker sizes
+    #             for i in range( 0, marker_count ):
+    #                 offset += 4
+
+    #     if major >= 2 :
+    #         offset += 4
+
+    #     # Version 2.6 and later
+    #     if ( ( major == 2 ) and ( minor >= 6 ) ) or major > 2 :
+    #         offset += 2
+
+    #     return offset
+    
     def __unpack_skeleton_rigid_body( self, data, major, minor, rb_num):
         offset = 0
 
         # ID (4 bytes)
+        new_id = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
         offset += 4
 
+        trace_mf( "RB: %3.1d ID: %3.1d"% (rb_num, new_id))
+
         # Position and orientation
-        offset += 12 # pos
-        offset += 16 # ori
+        pos = Vector3.unpack( data[offset:offset+12] )
+        offset += 12
+        trace_mf( "\tPosition    : [%3.2f, %3.2f, %3.2f]"% (pos[0], pos[1], pos[2] ))
+
+        rot = Quaternion.unpack( data[offset:offset+16] )
+        offset += 16
+        trace_mf( "\tOrientation : [%3.2f, %3.2f, %3.2f, %3.2f]"% (rot[0], rot[1], rot[2], rot[3] ))
+
+        rigid_body = MoCapData.RigidBody(new_id, pos, rot)
 
         # RB Marker Data ( Before version 3.0.  After Version 3.0 Marker data is in description )
         if( major < 3  and major != 0) :
             # Marker count (4 bytes)
             marker_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
             offset += 4
+            marker_count_range = range( 0, marker_count )
+            trace_mf( "\tMarker Count:", marker_count )
+
+            rb_marker_list=[]
+            for i in marker_count_range:
+                rb_marker_list.append(MoCapData.RigidBodyMarker())
 
             # Marker positions
-            for i in range( 0, marker_count ):
+            for i in marker_count_range:
+                pos = Vector3.unpack( data[offset:offset+12] )
                 offset += 12
+                trace_mf( "\tMarker", i, ":", pos[0],",", pos[1],",", pos[2] )
+                rb_marker_list[i].pos=pos
 
             if major >= 2:
                 # Marker ID's
-                for i in range( 0, marker_count ):
+                for i in marker_count_range:
+                    new_id = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
                     offset += 4
+                    trace_mf( "\tMarker ID", i, ":", new_id )
+                    rb_marker_list[i].id=new_id
 
                 # Marker sizes
-                for i in range( 0, marker_count ):
+                for i in marker_count_range:
+                    size = FloatValue.unpack( data[offset:offset+4] )
                     offset += 4
+                    trace_mf( "\tMarker Size", i, ":", size[0] )
+                    rb_marker_list[i].size=size
 
+            for i in marker_count_range:
+                rigid_body.add_rigid_body_marker(rb_marker_list[i])
         if major >= 2 :
+            marker_error, = FloatValue.unpack( data[offset:offset+4] )
             offset += 4
+            trace_mf( "\tMean Marker Error: %3.2f"% marker_error )
+            rigid_body.error = marker_error
 
         # Version 2.6 and later
         if ( ( major == 2 ) and ( minor >= 6 ) ) or major > 2 :
+            param, = struct.unpack( 'h', data[offset:offset+2] )
+            tracking_valid = ( param & 0x01 ) != 0
             offset += 2
+            is_valid_str='False'
+            if tracking_valid:
+                is_valid_str = 'True'
+            trace_mf( "\tTracking Valid: %s"%is_valid_str)
+            if tracking_valid:
+                rigid_body.tracking_valid = True
+            else:
+                rigid_body.tracking_valid = False
 
-        return offset
+        return offset, rigid_body
+    
+    def __unpack_skeleton_rigid_body_data( self, data, packet_size, major, minor):
+        rigid_body_data = MoCapData.RigidBodyData()
+        offset = 0
+        # Rigid body count (4 bytes)
+        rigid_body_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
+        offset += 4
+        trace_mf( "Rigid Body Count:", rigid_body_count )
+
+        # get data size (4 bytes)
+        offset_tmp, unpackedDataSize = self.__unpack_data_size(data[offset:],major, minor)
+        offset += offset_tmp
+
+        for i in range( 0, rigid_body_count ):
+            offset_tmp, rigid_body = self.__unpack_rigid_body( data[offset:], major, minor, i )
+            offset += offset_tmp
+            rigid_body_data.add_rigid_body(rigid_body)
+
+        return offset, rigid_body_data
     
     # Unpack a skeleton object from a data packet
+    # def __unpack_skeleton( self, data, major, minor, skeleton_num=0):
+    #     offset = 0
+    #     offset += 4
+
+    #     rigid_body_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
+    #     offset += 4
+    #     if(rigid_body_count > 0):
+    #         for rb_num in range( 0, rigid_body_count ):
+    #             offset_tmp = self.__unpack_skeleton_rigid_body( data[offset:], major, minor, rb_num )
+    #             offset+=offset_tmp
+    #     return offset
+
     def __unpack_skeleton( self, data, major, minor, skeleton_num=0):
         offset = 0
+        new_id = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
         offset += 4
+        trace_mf( "Skeleton %3.1d ID: %3.1d"% (skeleton_num, new_id ))
+        skeleton = MoCapData.Skeleton(new_id)
 
         rigid_body_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
         offset += 4
+        trace_mf( "Rigid Body Count : %3.1d"% rigid_body_count )
         if(rigid_body_count > 0):
             for rb_num in range( 0, rigid_body_count ):
-                offset_tmp = self.__unpack_skeleton_rigid_body( data[offset:], major, minor, rb_num )
+                offset_tmp, rigid_body = self.__unpack_skeleton_rigid_body( data[offset:], major, minor, rb_num )
+                skeleton.add_rigid_body(rigid_body)
                 offset+=offset_tmp
-        return offset
+
+        return offset, skeleton
     
+    # def __unpack_skeleton_data( self, data, packet_size, major, minor):
+    #     offset = 0
+    #     # Version 2.1 and later
+    #     skeleton_count = 0
+    #     if( ( major == 2 and minor > 0 ) or major > 2 ):
+    #         skeleton_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
+    #         offset += 4
+            
+    #         # Get data size (4 bytes)
+    #         offset_tmp, unpackedDataSize = self.__unpack_data_size(data[offset:],major, minor)
+    #         offset += offset_tmp
+    #         if(skeleton_count > 0):
+    #             for skeleton_num in range( 0, skeleton_count ):
+    #                 rel_offset = self.__unpack_skeleton( data[offset:], major, minor, skeleton_num )
+    #                 offset += rel_offset
+    #     return offset
+
     def __unpack_skeleton_data( self, data, packet_size, major, minor):
+        skeleton_data = MoCapData.SkeletonData()
+
         offset = 0
         # Version 2.1 and later
         skeleton_count = 0
         if( ( major == 2 and minor > 0 ) or major > 2 ):
             skeleton_count = int.from_bytes( data[offset:offset+4], byteorder='little',  signed=True )
             offset += 4
+            trace_mf( "Skeleton Count:", skeleton_count )
             
             # Get data size (4 bytes)
             offset_tmp, unpackedDataSize = self.__unpack_data_size(data[offset:],major, minor)
             offset += offset_tmp
-            if(skeleton_count > 0):
+            if(skeleton_count >0):
                 for skeleton_num in range( 0, skeleton_count ):
-                    rel_offset = self.__unpack_skeleton( data[offset:], major, minor, skeleton_num )
+                    rel_offset, skeleton = self.__unpack_skeleton( data[offset:], major, minor, skeleton_num )
                     offset += rel_offset
-        return offset
+                    skeleton_data.add_skeleton(skeleton)
+
+        return offset, skeleton_data
     
     def __unpack_asset( self, data, major, minor, asset_num=0):
         offset = 0
@@ -831,11 +966,18 @@ class NatNetClient:
         offset += rel_offset
         mocap_data.set_rigid_body_data(rigid_body_data)
         rigid_body_count = rigid_body_data.get_rigid_body_count() 
-        rigid_body = rigid_body_data.rigid_body_list
+        # rigid_body_ls = rigid_body_data.rigid_body_list
 
         # Skeleton Data
-        rel_offset = self.__unpack_skeleton_data(data[offset:], (packet_size - offset),major, minor)
+        # rel_offset = self.__unpack_skeleton_data(data[offset:], (packet_size - offset),major, minor)
+        # offset += rel_offset
+
+        rel_offset, skeleton_data = self.__unpack_skeleton_data(data[offset:], (packet_size - offset), \
+                                                                major, minor)
         offset += rel_offset
+        mocap_data.set_skeleton_data(skeleton_data)
+        skeleton_count = skeleton_data.get_skeleton_count()
+        # skeleton_ls = skeleton_data.skeleton_list
 
         # Assets ( Motive 3.1/NatNet 4.1 and greater)
         if (((major == 4) and (minor > 0)) or (major > 4)):
@@ -867,11 +1009,11 @@ class NatNetClient:
         tracked_models_changed = frame_suffix_data.tracked_models_changed
         edit_mode = frame_suffix_data.edit_mode
         
-        if self.model_changed is not None:
-            self.model_changed(tracked_models_changed)
+        # if self.model_changed is not None:
+        #     self.model_changed(tracked_models_changed)
         
-        if self.motive_edit is not None:
-            self.motive_edit(edit_mode)
+        # if self.motive_edit is not None:
+        #     self.motive_edit(edit_mode)
         
         # if self.rb_listener is not None:
         #     rb_dict = {}
@@ -879,21 +1021,33 @@ class NatNetClient:
         #     rb_dict[ "rb_id"] = rigid_body
 
         #     self.rb_listener( rb_dict )
+
+        # rb_data = {}
+        # for rb in rigid_body_data:
+        #     rb_data[rigid_body_ls[i].id_num] = {'pos': rigid_body_ls[i].pos, 'rot': rigid_body_ls[i].rot}
+        
+        # ske_data = {}
+        # for i in range(skeleton_count):
+        #     ske = skeleton_ls[i]
+        #     ske_data[ske.id_num] = {}
+        #     ske_rb = ske.rigid_body_list
+        #     for j in range(len(ske_rb)):
+        #         ske_data[ske.id_num][ske_rb[j].id_num] = {'pos': ske_rb[j].pos, 'rot': ske_rb[j].rot}
         
         # Send information to any listener.
-        if self.new_frame_listener is not None:
-            data_dict={}
-            data_dict["frame_number"] = frame_number
-            data_dict[ "rigid_body_count"] = rigid_body_count
-            data_dict[ "timecode"] = timecode
-            data_dict[ "timecode_sub"] = timecode_sub
-            data_dict[ "timestamp"] = timestamp
-            data_dict[ "is_recording"] = is_recording
-            data_dict[ "tracked_models_changed"] = tracked_models_changed
+        if self.data_listener is not None:
+            data_dict = {}
+            data_dict[ "tracked_models_changed" ] = tracked_models_changed
             data_dict[ "edit_mode" ] = edit_mode
-            # data_dict["rigid_body_id"] = rigid_body_id
-
-            self.new_frame_listener( data_dict )
+            data_dict[ "frame_number" ] = frame_number
+            # data_dict[ "rigid_body_count" ] = rigid_body_count
+            # data_dict["rb_data"] = rb_data
+            # data_dict[ "skeleton_count" ] = skeleton_count
+            # data_dict[ "ske_data"] = ske_data
+            data_dict[ "rb_data" ] = rigid_body_data.rb_data
+            data_dict[ "ske_data" ] = skeleton_data.ske_data
+            # print(data_dict)
+            self.data_listener( data_dict )
         
         return offset, mocap_data
 
@@ -1507,8 +1661,6 @@ class NatNetClient:
 
                 if dict_temp is not None:
                     self.desc_dict = dict_temp
-                    # for key, val in self.desc_dict.items():
-                    #     print("desc_dict_command_thread: ", key, val)
 
                 # self.command_ready_event.set()
                 data=bytearray(0)
@@ -1567,7 +1719,7 @@ class NatNetClient:
         #return message ID
         major = self.get_major()
         minor = self.get_minor()
-        rigid_body_dict = None
+        desc_dict = None
 
         trace( "Begin Packet\n-----------------" )
         show_nat_net_version = False
@@ -1603,8 +1755,31 @@ class NatNetClient:
                                                                       minor)
             offset += offset_tmp
 
-            rigid_body_dict = {rigid_body.id_num: DataDescriptions.get_as_string(rigid_body.sz_name) for \
-                               rigid_body in data_descs.rigid_body_list}
+            desc_dict = {}
+            
+            desc_dict['rb_desc'] = {}
+            for rigid_body in data_descs.rigid_body_list:
+                desc_dict['rb_desc'][rigid_body.id_num] = {'name' : \
+                    DataDescriptions.get_as_string(rigid_body.sz_name)}
+            
+            desc_dict['ske_desc'] = {}
+            for skeleton in data_descs.skeleton_list:
+                ske_name_len = len(DataDescriptions.get_as_string(skeleton.name))
+                desc_dict['ske_desc'][skeleton.id_num] = {}
+                desc_dict['ske_desc'][skeleton.id_num]['name'] = \
+                    DataDescriptions.get_as_string(skeleton.name)
+                desc_dict['ske_desc'][skeleton.id_num]['rb_desc'] = {}
+                desc_dict['ske_desc'][skeleton.id_num]['rb_name'] = {}
+                for rigid_body in skeleton.rigid_body_description_list:
+                    desc_dict['ske_desc'][skeleton.id_num]['rb_desc'][rigid_body.id_num] = {'name' : \
+                        DataDescriptions.get_as_string(rigid_body.sz_name)[ske_name_len+1:]}
+                    desc_dict['ske_desc'][skeleton.id_num]['rb_name']\
+                    [DataDescriptions.get_as_string(rigid_body.sz_name)[ske_name_len+1:]] = rigid_body.id_num
+                    
+                # desc_dict['ske_desc'][skeleton.id_num]['rb_id_list'] = (rigid_body.id_num for rigid_body \
+                #                                             in skeleton.rigid_body_description_list)
+                # desc_dict['ske_desc'][skeleton.id_num]['rb_name_list'] = [rigid_body.sz_name for rigid_body \
+                #                                             in skeleton.rigid_body_description_list]
 
         elif message_id == self.NAT_SERVERINFO :
             trace( "Message ID  : %3.1d NAT_SERVERINFO"% message_id )
@@ -1660,7 +1835,7 @@ class NatNetClient:
             trace( "ERROR: Unrecognized packet type" )
 
         trace( "End Packet\n-----------------" )
-        return message_id, rigid_body_dict
+        return message_id, desc_dict # rigid_body_dict
 
     def send_request( self, in_socket, command, command_str, address ):
         # Compose the message in our known message format

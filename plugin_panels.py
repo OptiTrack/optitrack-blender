@@ -1,6 +1,7 @@
 import bpy
 from . import plugin_operators
 from .plugin_operators import ConnectOperator
+# from .plugin_skeletons import skeletonDict
 from bpy.types import Panel
 from .icon_viewer import IconsLoader
 
@@ -65,8 +66,16 @@ class Connection(Panel):
             if obj_ls:
                 box = layout.box()
                 for key, val in obj_ls.items():
-                    row = box.row(align=True)
-                    row.label(text=str(key) + ": " + str(val), icon_value = IconsLoader.get_icon("RigidBody"))
+                    if key == "rb_desc":
+                        for k1, v1 in val.items():
+                            row = box.row(align=True)
+                            row.label(text=str(k1) + " : " + str(v1['name']), \
+                                      icon_value = IconsLoader.get_icon("RigidBody"))
+                    
+                    if key == "ske_desc":
+                        for k2, v2 in val.items():
+                            row = box.row(align=True)
+                            row.label(text=str(k2) + " : " + str(v2['name']), icon = 'OUTLINER_OB_ARMATURE')
             else:
                 box = layout.box()
                 row = box.row(align=True)
@@ -75,6 +84,12 @@ class Connection(Panel):
             row.operator(plugin_operators.RefreshAssetsOperator.bl_idname, \
                          text=plugin_operators.RefreshAssetsOperator.bl_label, \
                             icon_value = IconsLoader.get_icon("Refresh"))
+            
+            layout.row().separator()
+            row = layout.row(align=True)
+            row.operator(plugin_operators.MotiveArmatureOperator.bl_idname, \
+                         text=plugin_operators.MotiveArmatureOperator.bl_label, \
+                            icon = 'OUTLINER_OB_ARMATURE')
             
             row = layout.row(align=True)
             if context.window_manager.start_status:
@@ -161,26 +176,33 @@ class AssignObjects(Panel):
         layout = self.layout
 
         row = layout.row(align=True)
-        row.label(text="Assign Rigid Body to Blender Object:", icon='ARROW_LEFTRIGHT')
+        row.label(text="Assign Motive to Blender Asset:", icon='ARROW_LEFTRIGHT')
 
         layout.use_property_split = True
 
         existing_conn = plugin_operators.ConnectOperator.connection_setup
         # bad_obj_types = ['CAMERA', 'LIGHT']
         if existing_conn.streaming_client:
-            existing_conn.get_rigid_body_dict(context)
-            if existing_conn.rigid_bodies_motive:
+            # existing_conn.get_rigid_body_dict(context)
+            existing_conn.get_desc_dict(context)
                 # for obj in bpy.data.objects:
                     # if obj.type not in bad_obj_types:
-                if bpy.context.active_object.select_get(): # == 
-                    obj = bpy.context.active_object
-                    objprop = obj.obj_prop
-                    row = layout.row(align=True)
-                    obj_name = obj.name
+            if bpy.context.active_object.select_get(): # == 
+                obj = bpy.context.active_object
+                objprop = obj.obj_prop
+                row = layout.row(align=True)
+                obj_name = obj.name
+
+                if obj.type == 'MESH':
                     row.prop(objprop, 'rigid_bodies', text=obj_name)
-                else:
-                    row = layout.row(align=True)
-                    row.label(text="Select an object.")
+                
+                if obj.type == 'ARMATURE':
+                    row.prop(objprop, 'skeletons', text=obj_name)
+            
+            else:
+                row = layout.row(align=True)
+                row.label(text="Select an object.")
+        
         else:
             row = layout.row(align=True)
             row.label(text="Start the connection.")
@@ -196,18 +218,60 @@ class AllocatedObjects(Panel):
 
     @classmethod
     def poll(cls, context): # sub panel created only if there are assigned motive objects to show
-        return bool(plugin_operators.ConnectOperator.connection_setup.rev_rigid_bodies_blender)
+        d = plugin_operators.ConnectOperator.connection_setup.assets_blender
+        if d:
+            if ('rigid_body' in d and bool(d['rigid_body'])) or ('skeleton' in d and bool(d['skeleton'])):
+                return True
     
     def draw(self, context):
         existing_conn = plugin_operators.ConnectOperator.connection_setup
-        if existing_conn.rev_rigid_bodies_blender:
-            layout = self.layout
-            for key, val in existing_conn.rev_rigid_bodies_blender.items():
+        layout = self.layout
+        for key, val in existing_conn.assets_blender.items(): # assetType: m_ID: b_ID
+            for k, v in val.items(): # m_ID: b_ID
+                m_ID = k
+                b_ID = v['b_ID']
+                b_obj_name = existing_conn.rev_assets_blender[v['b_ID']]['obj'].name
+
                 row = layout.row(align=True)
                 row.alert = True
-                row.label(text= key.name + " : " + str(val) + " : " + \
-                            str(existing_conn.rigid_bodies_motive[val]))
+                
+                if key == 'rigid_body':
+                    m_obj_name = existing_conn.assets_motive['rb_desc'][k]['name']
+                    row.label(text = b_obj_name + " : " + str(m_ID) + " : " + \
+                        str(m_obj_name), icon = 'OUTLINER_DATA_MESH')
+            
+                elif key == 'skeleton':
+                    m_obj_name = existing_conn.assets_motive['ske_desc'][k]['name']
+                    row.label(text = b_obj_name + " : " + str(m_ID) + " : " + \
+                        str(m_obj_name), icon = 'OUTLINER_OB_ARMATURE')
 
+class AllocatedArmatureBones(Panel):
+    bl_idname = "OBJECT_PT_allocated_arm_bones"
+    bl_label = "Motive: Skeleton Bones"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "object"
+    bl_parent_id = 'OBJECT_PT_allocated_objects'
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context): # sub panel created only if there are assigned skeleton bones to show
+        if 'skeleton' in plugin_operators.ConnectOperator.connection_setup.assets_blender:
+            if plugin_operators.ConnectOperator.connection_setup.assets_blender['skeleton']:
+                return True
+        # return bool(plugin_operators.ConnectOperator.connection_setup.assets_blender['skeleton'])
+    
+    def draw(self, context):
+        existing_conn = plugin_operators.ConnectOperator.connection_setup
+        layout = self.layout
+        for key, val in existing_conn.assets_blender['skeleton'].items(): # assetType: m_ID: b_ID
+            row = layout.row(align=True)
+            row.alert = True
+            row.label(text = existing_conn.assets_motive['ske_desc'][key]['name'] + ": ")
+            for k, v in val['ske_rb_map']['b_to_m'].items(): # m_ID: b_ID
+                row = layout.row(align=True)
+                row.label(text=k + " : " + str(v) + " : " + \
+                    existing_conn.assets_motive['ske_desc'][key]['rb_desc'][v]['name'])
 
 class Info(Panel):
     bl_idname = "VIEW3D_PT_info"

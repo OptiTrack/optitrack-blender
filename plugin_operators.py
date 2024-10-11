@@ -2,6 +2,7 @@ import bpy
 import ipaddress
 from bpy.types import Operator
 import sys
+import os
 from threading import Lock
 from queue import Queue
 import mathutils
@@ -20,9 +21,9 @@ class ConnectionSetup:
         self.streaming_client = None
         self.indicate_model_changed = None
         self.indicate_motive_edit = None
-        self.rigid_bodies_motive = {}
-        self.rigid_bodies_blender = {} # ({motive_ID: blender_ID} pair)
-        self.rev_rigid_bodies_blender = {} # ({blender_ID: {object, motive_ID}} pair)
+        self.assets_motive = {} # ( {assetType: {motive_ID: motive_name}} )
+        self.assets_blender = {} # ( {assetType: {motive_ID: blender_ID}} )
+        self.rev_assets_blender = {} # ( {blender_ID: {object, motive_ID, assetType}} )
         self.q = Queue()
         self.l = Lock()
         self.is_running = None
@@ -33,20 +34,20 @@ class ConnectionSetup:
         self.streaming_client = None
         self.indicate_model_changed = None
         self.indicate_motive_edit = None
-        self.rigid_bodies_motive = {}
-        self.rigid_bodies_blender = {}
-        self.rev_rigid_bodies_blender = {} 
+        self.assets_motive = {}
+        self.assets_blender = {}
+        self.rev_assets_blender = {} 
         self.q = Queue()
         self.l = Lock()
         self.is_running = None
         self.frame_start = 0
         self.live_record = False
 
-    def signal_model_changed(self, tracked_model_changed): # flag to keep checking if Motive .tak changed
-        self.indicate_model_changed = tracked_model_changed
+    # def signal_model_changed(self, tracked_model_changed): # flag to keep checking if Motive .tak changed
+    #     self.indicate_model_changed = tracked_model_changed
     
-    def signal_motive_edit(self, edit_mode): # flag for live/edit mode in Motive
-        self.indicate_motive_edit = edit_mode
+    # def signal_motive_edit(self, edit_mode): # flag for live/edit mode in Motive
+    #     self.indicate_motive_edit = edit_mode
 
     def connect_button_clicked(self, dict, context):
         if self.streaming_client is not None:
@@ -62,10 +63,12 @@ class ConnectionSetup:
                                 "SetProperty,,Unlabeled Markers,false",
                                 "SetProperty,,Asset Markers,false",
                                 "SetProperty,,Rigid Bodies,true",
+                                "SetProperty,,Skeletons,true",
                                 "SetProperty,,Trained Markerset Markers,false",
                                 "SetProperty,,Trained Markerset Bones,false",
                                 "SetProperty,,Devices,false",
-                                "SetProperty,,Skeleton Coordinates,Global",
+                                # "SetProperty,,Skeleton Coordinates,Global",
+                                "SetProperty,,Skeleton Coordinates,Local",
                                 "SetProperty,,Bone Naming Convention,FBX",
                                 "SetProperty,,Up Axis,Y-Axis"]
                 for sz_command in sz_commands:
@@ -85,14 +88,18 @@ class ConnectionSetup:
 
     def start_button_clicked(self, context):
         if context.window_manager.connection_status:
-                self.streaming_client.model_changed = self.signal_model_changed
-                self.streaming_client.rigid_body_listener = self.receive_rigid_body_frame
-                self.streaming_client.motive_edit = self.signal_motive_edit
+                self.streaming_client.data_listener = self.receive_data_frame
+                
                 # Update start state
                 context.window_manager.start_status = True
 
-    def get_rigid_body_dict(self, context): # array of all rigid bodies in the .tak
-        self.rigid_bodies_motive = self.streaming_client.desc_dict
+    def get_desc_dict(self, context): # array of all rigid bodies in the .tak
+        if self.streaming_client.desc_dict != self.assets_motive:
+            for k, v in self.rev_assets_blender.items():
+                v['m_ID'] = "None"
+            self.assets_blender = {}
+            print(self.assets_blender, self.rev_assets_blender)
+        self.assets_motive = self.streaming_client.desc_dict
     
     def request_data_descriptions(self, s_client, context):
         # Request the model definitions
@@ -133,116 +140,180 @@ class ConnectionSetup:
         ori = ori.to_matrix()
         eul = ori.to_euler('ZYX')
         return eul
-    
-    def receive_rigid_body_frame(self, new_id, position, rotation, frame_number):
-        if new_id in self.rigid_bodies_blender:
-            # Y-Up
-            pos = list(position)
-            rot = list(rotation)
 
-            # Z-Up with quats
-            pos = self.quat_loc_yup_zup(position)
-            rot = self.quat_rot_yup_zup(rotation)
+    def receive_data_frame(self, data_dict):
+        self.indicate_model_changed = data_dict[ 'tracked_models_changed' ]
+        self.indicate_motive_edit = data_dict[ 'edit_mode' ]
+        frame_num = data_dict[ 'frame_number' ]
+
+        values = []
+
+        for key1 in data_dict[ 'rb_data' ]:
+            if ('rigid_body' in self.assets_blender) and (key1 in self.assets_blender['rigid_body']):
+                m_val = data_dict['rb_data'][key1] # rb.m_id = key1
+                b_id = self.assets_blender['rigid_body'][key1]['b_ID']
+                
+                # Z-Up with quats
+                pos1 = self.quat_loc_yup_zup(m_val['pos'])
+                rot1 = self.quat_rot_yup_zup(m_val['rot'])
             
-            # (x, y, z, w) -> (w, x, y, z)
-            rot = self.sca_first_last(rot)
-            
-            values = (new_id, pos, rot, frame_number)
+                # (x, y, z, w) -> (w, x, y, z)
+                rot1 = self.sca_first_last(rot1)
+
+                # sequence -> (assetID, pos, rot, frame_num, assetType, ske_rb)
+                value = (b_id, pos1, rot1, frame_num, 'rigid_body', None)
+                values.append(value)
+
+        for key2 in data_dict[ 'ske_data' ]:
+            if ('skeleton' in self.assets_blender) and (key2 in self.assets_blender['skeleton']):
+                # m_ske_id = key2
+                asset_type = 'skeleton'
+                b_id = self.assets_blender['skeleton'][key2]['b_ID']
+                m_ske_val = data_dict['ske_data'][key2] # ske.m_id = key2
+                for k2, v2 in m_ske_val.items():
+                    bone = self.assets_blender['skeleton'][key2]['ske_rb_map']['m_to_b'][k2]
+                    # Z-Up with quats
+                    pos2 = self.quat_loc_yup_zup(v2['pos'])
+                    rot2 = self.quat_rot_yup_zup(v2['rot'])
+                
+                    # (x, y, z, w) -> (w, x, y, z)
+                    rot2 = self.sca_first_last(rot2)
+
+                    # sequence -> (assetID, pos, rot, frame_num, assetType, ske_rb)
+                    value = (b_id, pos2, rot2, frame_num, 'skeleton', bone)
+                    values.append(value)
+
             self.l.acquire()
             try:
                 self.q.put(values)
             finally:
                 self.l.release()
                 bpy.app.timers.register(self.update_object_loc, first_interval=1/120) # freq = 120 Hz
+        
         else:
             pass
                         
     def update_object_loc(self):
-        if self.rigid_bodies_blender:
+        if self.assets_blender:
             self.l.acquire()
             try:
                 if not self.q.empty(): 
-                    q_val = self.q.get()
-                    try:
-                        # live mode
-                        if self.indicate_motive_edit == False:
-                            # no definitive keyframes
-                            if bpy.context.window_manager.record2_status == True:
-                                bpy.context.window_manager.record1_status = False
-                                if self.live_record == False:
-                                    self.frame_start = q_val[3]
-                                    print("frame start: ", self.frame_start)
-                                self.live_record = True
-                                current_frame = (q_val[3] - self.frame_start)
-                                print("current_frame: ", current_frame)
-                                bpy.context.scene.frame_set(current_frame)
-                                my_obj = self.rev_rigid_bodies_blender[self.rigid_bodies_blender[q_val[0]]]['obj'] # new_id
-                                my_obj.location = q_val[1]
-                                my_obj.keyframe_insert(data_path="location", frame=current_frame)
-                                my_obj.rotation_mode = 'QUATERNION'
-                                my_obj.rotation_quaternion = q_val[2]
-                                my_obj.keyframe_insert(data_path="rotation_quaternion",frame=current_frame)
-                            
-                            # selective keyframes
-                            elif bpy.context.window_manager.record1_status == True:
-                                bpy.context.window_manager.record2_status = False
-                                if self.live_record == False:
-                                    self.frame_start = q_val[3]
-                                self.live_record = True
-                                current_frame = (q_val[3] - self.frame_start)
-                                if bpy.context.scene.frame_start <= current_frame <= bpy.context.scene.frame_end:
+                    q_vals = self.q.get()
+                    # print("queue_value: ", q_vals)
+                    for q_val in q_vals:
+                        try:
+                            # live mode
+                            if self.indicate_motive_edit == False:
+                                # no definitive keyframes
+                                if bpy.context.window_manager.record2_status == True:
+                                    bpy.context.window_manager.record1_status = False
+                                    if self.live_record == False:
+                                        self.frame_start = q_val[3]
+                                        print("frame start: ", self.frame_start)
+                                    self.live_record = True
+                                    current_frame = (q_val[3] - self.frame_start)
+                                    print("current_frame: ", current_frame)
                                     bpy.context.scene.frame_set(current_frame)
-                                    my_obj = self.rev_rigid_bodies_blender[self.rigid_bodies_blender[q_val[0]]]['obj']
+                                    # q_val[5] -> assetType, q_val[0] -> rbID
+                                    if q_val[4] == 'rigid_body':
+                                        my_obj = self.rev_assets_blender[q_val[0]]['obj']
+                                    elif q_val[4] == 'skeleton':
+                                        armature = self.rev_assets_blender[q_val[0]]['obj']
+                                        my_obj = armature.pose.bones[q_val[5]]
                                     my_obj.location = q_val[1]
                                     my_obj.keyframe_insert(data_path="location", frame=current_frame)
                                     my_obj.rotation_mode = 'QUATERNION'
                                     my_obj.rotation_quaternion = q_val[2]
                                     my_obj.keyframe_insert(data_path="rotation_quaternion",frame=current_frame)
+                                
+                                # selective keyframes
+                                elif bpy.context.window_manager.record1_status == True:
+                                    bpy.context.window_manager.record2_status = False
+                                    if self.live_record == False:
+                                        self.frame_start = q_val[3]
+                                    self.live_record = True
+                                    current_frame = (q_val[3] - self.frame_start)
+                                    if bpy.context.scene.frame_start <= current_frame <= bpy.context.scene.frame_end:
+                                        bpy.context.scene.frame_set(current_frame)
+                                        # my_obj = self.rev_assets_blender[self.assets_blender[q_val[0]]]['obj']
+                                        if q_val[4] == 'rigid_body':
+                                            my_obj = self.rev_assets_blender[q_val[0]]['obj']
+                                        elif q_val[4] == 'skeleton':
+                                            armature = self.rev_assets_blender[q_val[0]]['obj']
+                                            my_obj = armature.pose.bones[q_val[5]]
+                                        my_obj.location = q_val[1]
+                                        my_obj.keyframe_insert(data_path="location", frame=current_frame)
+                                        my_obj.rotation_mode = 'QUATERNION'
+                                        my_obj.rotation_quaternion = q_val[2]
+                                        my_obj.keyframe_insert(data_path="rotation_quaternion",frame=current_frame)
 
-                            # no recording
-                            else:
-                                my_obj = self.rev_rigid_bodies_blender[self.rigid_bodies_blender[q_val[0]]]['obj']
-                                my_obj.location = q_val[1]
-                                my_obj.rotation_mode = 'QUATERNION'
-                                my_obj.rotation_quaternion = q_val[2]
-                        
-                        # edit mode
-                        else:                    
-                            # no definitive keyframes
-                            if bpy.context.window_manager.record2_status == True:
-                                bpy.context.window_manager.record1_status = False
-                                if bpy.context.scene.frame_end <= q_val[3]:
-                                    bpy.context.scene.frame_end = q_val[3]
-                                bpy.context.scene.frame_set(q_val[3])
-                                my_obj = self.rev_rigid_bodies_blender[self.rigid_bodies_blender[q_val[0]]]['obj'] # new_id
-                                my_obj.location = q_val[1]
-                                my_obj.keyframe_insert(data_path="location", frame=q_val[3])
-                                my_obj.rotation_mode = 'QUATERNION'
-                                my_obj.rotation_quaternion = q_val[2]
-                                my_obj.keyframe_insert(data_path="rotation_quaternion",frame=q_val[3])
-
-                            # selective keyframes
-                            elif bpy.context.window_manager.record1_status == True:
-                                bpy.context.window_manager.record2_status = False
-                                if bpy.context.scene.frame_start <= q_val[3] <= bpy.context.scene.frame_end:
+                                # no recording
+                                else:
+                                    # my_obj = self.rev_assets_blender[self.assets_blender[q_val[0]]]['obj']
+                                    if q_val[4] == 'rigid_body':
+                                        my_obj = self.rev_assets_blender[q_val[0]]['obj']
+                                    elif q_val[4] == 'skeleton':
+                                        armature = self.rev_assets_blender[q_val[0]]['obj']
+                                        my_obj = armature.pose.bones[q_val[5]]
+                                    my_obj.location = q_val[1]
+                                    my_obj.rotation_mode = 'QUATERNION'
+                                    my_obj.rotation_quaternion = q_val[2]
+                            
+                            # edit mode
+                            else:          
+                                # no definitive keyframes
+                                if bpy.context.window_manager.record2_status == True:
+                                    bpy.context.window_manager.record1_status = False
+                                    if bpy.context.scene.frame_end <= q_val[3]:
+                                        bpy.context.scene.frame_end = q_val[3]
                                     bpy.context.scene.frame_set(q_val[3])
-                                    my_obj = self.rev_rigid_bodies_blender[self.rigid_bodies_blender[q_val[0]]]['obj']
+                                    # my_obj = self.rev_assets_blender[self.assets_blender[q_val[0]]]['obj'] # new_id
+                                    if q_val[4] == 'rigid_body':
+                                        my_obj = self.rev_assets_blender[q_val[0]]['obj']
+                                    elif q_val[4] == 'skeleton':
+                                        armature = self.rev_assets_blender[q_val[0]]['obj']
+                                        my_obj = armature.pose.bones[q_val[5]]
                                     my_obj.location = q_val[1]
                                     my_obj.keyframe_insert(data_path="location", frame=q_val[3])
                                     my_obj.rotation_mode = 'QUATERNION'
                                     my_obj.rotation_quaternion = q_val[2]
                                     my_obj.keyframe_insert(data_path="rotation_quaternion",frame=q_val[3])
 
-                            # no recording
-                            else:
-                                my_obj = self.rev_rigid_bodies_blender[self.rigid_bodies_blender[q_val[0]]]['obj']
-                                my_obj.location = q_val[1]
-                                my_obj.rotation_mode = 'QUATERNION'
-                                my_obj.rotation_quaternion = q_val[2]
+                                # selective keyframes
+                                elif bpy.context.window_manager.record1_status == True:
+                                    bpy.context.window_manager.record2_status = False
+                                    if bpy.context.scene.frame_start <= q_val[3] <= bpy.context.scene.frame_end:
+                                        bpy.context.scene.frame_set(q_val[3])
+                                        # my_obj = self.rev_assets_blender[self.assets_blender[q_val[0]]]['obj']
+                                        if q_val[4] == 'rigid_body':
+                                            my_obj = self.rev_assets_blender[q_val[0]]['obj']
+                                        elif q_val[4] == 'skeleton':
+                                            armature = self.rev_assets_blender[q_val[0]]['obj']
+                                            my_obj = armature.pose.bones[q_val[5]]
+                                        my_obj.location = q_val[1]
+                                        my_obj.keyframe_insert(data_path="location", frame=q_val[3])
+                                        my_obj.rotation_mode = 'QUATERNION'
+                                        my_obj.rotation_quaternion = q_val[2]
+                                        my_obj.keyframe_insert(data_path="rotation_quaternion",frame=q_val[3])
 
-                    except KeyError:
-                        # if object id updated in middle of the running .tak
-                        pass
+                                # no recording
+                                else:
+                                    # my_obj = self.rev_assets_blender[self.assets_blender[q_val[0]]]['obj']
+                                    if q_val[4] == 'rigid_body':
+                                        my_obj = self.rev_assets_blender[q_val[0]]['obj']
+                                    elif q_val[4] == 'skeleton':
+                                        # print("q_val[0]: ", q_val[0])
+                                        armature = self.rev_assets_blender[q_val[0]]['obj']
+                                        my_obj = armature.pose.bones[q_val[5]]
+                                        # bpy.ops.object.mode_set(mode='POSE')
+                                    my_obj.location = q_val[1]
+                                    my_obj.rotation_mode = 'QUATERNION'
+                                    my_obj.rotation_quaternion = q_val[2]
+                                    print(my_obj.name, " ", my_obj.location, " ", my_obj.rotation_quaternion)
+
+                        except KeyError:
+                            # if object id updated in middle of the running .tak
+                            pass
             finally:
                 self.l.release()
         else:
@@ -251,9 +322,12 @@ class ConnectionSetup:
     def stop_receive_rigid_body_frame(self, new_id, position, rotation, frame_number):
         pass
 
+    def stop_receive_data_frame(self, data_dict):
+        pass
+
     def pause_button_clicked(self, context): # Stop the data stream, but don't update the stored info        
         if self.streaming_client:
-            self.streaming_client.rigid_body_listener = self.stop_receive_rigid_body_frame
+            self.streaming_client.data_listener = self.stop_receive_data_frame
             context.window_manager.start_status = False
     
     def stop_button_clicked(self, context): # Stop connection
@@ -273,7 +347,7 @@ class ConnectOperator(Operator):
 
     def execute(self, context):
         conn = self.connection_setup
-        # Initialize streaming client       
+        # Initialize streaming client
         if conn.streaming_client is None:
             optionsDict = {'clientAddress': bpy.context.scene.init_prop.client_address, \
                            'serverAddress': bpy.context.scene.init_prop.server_address, \
@@ -284,7 +358,7 @@ class ConnectOperator(Operator):
                 ipaddress.ip_address(optionsDict["clientAddress"])
             except ValueError:
                 self.report({'ERROR'}, "Client IP is not valid")
-                conn.reset_to_initial()
+                # conn.reset_to_initial()
                 return {'CANCELLED'}
         
             try:
@@ -302,10 +376,13 @@ class ConnectOperator(Operator):
             from .app_handlers import object_handler
             object_handler(context.scene)
         except Exception as e:
-            print("error: ", e)
             conn.streaming_client = None
             context.window_manager.connection_status = False
-            self.report({'ERROR'}, f"Your Motive is not set to Multicast")
+            if "'NoneType' object has no attribute 'sendto'" in str(e):
+                self.report({'ERROR'}, f"Your Motive is not set to Multicast")
+            else:
+                self.report({'ERROR'}, f"Check Toggle System Console")
+                print("error: ", e)
             return {'CANCELLED'}
     
         return {'FINISHED'}
@@ -320,6 +397,18 @@ class RefreshAssetsOperator(Operator):
         existing_connection.request_data_descriptions(existing_connection.streaming_client, context)
         if context.window_manager.start_status:
             existing_connection.pause_button_clicked(context)
+        return {'FINISHED'}
+
+class MotiveArmatureOperator(Operator):
+    bl_idname = "wm.add_armature"
+    bl_description = "Add Human Meta-Rig with Motive's Armature"
+    bl_label = "Add Motive Armature"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        curr_dir = os.path.dirname(os.path.abspath(__file__))
+        file_path = os.path.join(curr_dir, "MotiveSkeleton.fbx")
+        bpy.ops.import_scene.fbx(filepath=file_path)
         return {'FINISHED'}
 
 class StartOperator(Operator):

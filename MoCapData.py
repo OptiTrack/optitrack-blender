@@ -248,8 +248,8 @@ class RigidBody:
         self.rb_marker_list.append(copy.deepcopy(rigid_body_marker))
         return len(self.rb_marker_list)
 
-    def save_pos_ori(self):
-        return self.pos, self.rot
+    # def save_pos_ori(self):
+    #     return self.pos, self.rot
 
     def get_as_string(self, tab_str=0, level=0):
         out_tab_str = get_tab_str(tab_str, level)
@@ -292,24 +292,31 @@ class RigidBody:
 class RigidBodyData:
     def __init__(self):
         self.rigid_body_list=[]
+        self.rb_data = {} # added
 
     def add_rigid_body(self, rigid_body):
         self.rigid_body_list.append(copy.deepcopy(rigid_body))
+        self.rb_data[rigid_body.id_num] = {}
+        self.rb_data[rigid_body.id_num]['pos'] = rigid_body.pos
+        self.rb_data[rigid_body.id_num]['rot'] = rigid_body.rot
         return len(self.rigid_body_list)
 
 
     def get_rigid_body_count(self): 
         return len(self.rigid_body_list)
     
-    def get_pos_ori(self):
-        locs = []
-        oris = []
+    # def rigid_body_dict(self):
+    #     for rigid_body in self.rigid_body_list:
+    
+    # def get_pos_ori(self):
+    #     locs = []
+    #     oris = []
 
-        for rigid_body in self.rigid_body_list:
-            loc, ori = rigid_body.save_pos_ori()
-            locs.append(loc)
-            oris.append(ori)
-        return locs, oris
+    #     for rigid_body in self.rigid_body_list:
+    #         loc, ori = rigid_body.save_pos_ori()
+    #         locs.append(loc)
+    #         oris.append(ori)
+    #     return locs, oris
 
     def get_as_string(self, tab_str="  ", level=0):
         out_tab_str = get_tab_str(tab_str, level)
@@ -328,10 +335,14 @@ class Skeleton:
     def __init__(self, new_id=0):
         self.id_num=new_id
         self.rigid_body_list=[]
+        self.rb_data = {} # added
 
 
     def add_rigid_body(self, rigid_body):
         self.rigid_body_list.append(copy.deepcopy(rigid_body))
+        self.rb_data[rigid_body.id_num] = {}
+        self.rb_data[rigid_body.id_num]['pos'] = rigid_body.pos
+        self.rb_data[rigid_body.id_num]['rot'] = rigid_body.rot
         return len(self.rigid_body_list)
 
 
@@ -351,10 +362,12 @@ class Skeleton:
 class SkeletonData:
     def __init__(self):
         self.skeleton_list=[]
+        self.ske_data = {} # added
 
 
     def add_skeleton(self, new_skeleton):
         self.skeleton_list.append(copy.deepcopy(new_skeleton))
+        self.ske_data[new_skeleton.id_num] = new_skeleton.rb_data # new_skeleton.rigid_body_list
 
 
     def get_skeleton_count(self):
@@ -805,10 +818,10 @@ class MoCapData:
     def set_suffix_data(self, new_suffix_data):
         self.suffix_data = new_suffix_data
 
-    def retrieve_pos_ori(self):
-        if not self.rigid_body_data == None:
-            locs, oris = self.rigid_body_data.get_pos_ori()
-            return locs, oris
+    # def retrieve_pos_ori(self):
+    #     if not self.rigid_body_data == None:
+    #         locs, oris = self.rigid_body_data.get_pos_ori()
+    #         return locs, oris
 
     def get_as_string(self, tab_str = "  ", level = 0):
         out_tab_str = get_tab_str(tab_str, level)

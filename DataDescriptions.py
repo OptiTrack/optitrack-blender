@@ -225,8 +225,8 @@ class SkeletonDescription:
         self.id_num = new_id
         self.rigid_body_description_list=[]
 
-    def set_name(self,new_name):
-        self.name=new_name
+    def set_name(self, new_name):
+        self.name = new_name
 
     def set_id(self, new_id):
         self.id_num = new_id

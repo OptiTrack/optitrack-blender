@@ -38,13 +38,15 @@ def register():
     classes = [plugin_panels.PluginMotive, property_definitions.CustomSceneProperties,
                property_definitions.CustomObjectProperties, plugin_panels.InitialSettings, 
                plugin_panels.AssignObjects, plugin_panels.AllocatedObjects, 
+               plugin_panels.AllocatedArmatureBones,
                plugin_panels.Connection, plugin_panels.Recorder, plugin_operators.ResetOperator,
                plugin_operators.ConnectOperator, plugin_operators.RefreshAssetsOperator,
                plugin_operators.StartOperator, plugin_operators.PauseOperator,
                plugin_operators.StartRecordOperator, plugin_operators.StopRecordOperator,
                plugin_operators.StartEndFrameOperator, plugin_operators.StartFrameRecordOperator, 
                plugin_operators.StopFrameRecordOperator, plugin_operators.newActionOperator,
-               plugin_operators.deleteActionOperator, plugin_panels.Info]
+               plugin_operators.deleteActionOperator, plugin_operators.MotiveArmatureOperator,
+               plugin_panels.Info]
 
     for cls in classes:
         bpy.utils.register_class(cls)

@@ -7,29 +7,39 @@ from .property_definitions import CustomObjectProperties
 def object_handler(scene):
     if bpy.context.window_manager.connection_status == True:
         existing_connection = ConnectOperator.connection_setup
-        if bpy.context.window_manager.operators:
-            last_operator = bpy.context.window_manager.operators[-1].bl_idname
-            if last_operator == "OBJECT_OT_delete" or last_operator == "OUTLINER_OT_delete": # check if any object is deleted with the scene update
-                deleted_ids = []
-                for key in existing_connection.rev_rigid_bodies_blender:
-                    if str(existing_connection.rev_rigid_bodies_blender[key]['obj']) == "<bpy_struct, Object invalid>":
-                        deleted_ids.append(key)
-                
-                if deleted_ids:
-                    for id in deleted_ids: # if object deleted, update the dictionaries accordingly
-                        if existing_connection.rev_rigid_bodies_blender[id]['m_ID'] == None:
-                            del existing_connection.rev_rigid_bodies_blender[id]
-                        else:
-                            del existing_connection.rigid_bodies_blender[existing_connection.rev_rigid_bodies_blender[id]['m_ID']]
-                            del existing_connection.rev_rigid_bodies_blender[id]
-                        print("Object deleted, ID: ", id)
+        # if bpy.context.window_manager.operators:
+        #     last_operator = bpy.context.window_manager.operators[-1].bl_idname
+        #     if last_operator == "OBJECT_OT_delete" or last_operator == "OUTLINER_OT_delete": # check if any object is deleted with the scene update
+        deleted_ids = []
+        for key in existing_connection.rev_assets_blender:
+            if str(existing_connection.rev_assets_blender[key]['obj']) == "<bpy_struct, Object invalid>":
+                deleted_ids.append((key, existing_connection.rev_assets_blender[key]['m_ID'], \
+                                    existing_connection.rev_assets_blender[key]['asset_type']))
+        
+        if deleted_ids:
+            for id in deleted_ids: # if object deleted, update the dictionaries accordingly
+                if id[1] == None:
+                    del existing_connection.rev_assets_blender[id[0]]
+                else:
+                    if id[2] in existing_connection.assets_blender:
+                        if id[1] in existing_connection.assets_blender[id[2]]:
+                            del existing_connection.assets_blender[id[2]][id[1]]
+                    del existing_connection.rev_assets_blender[id[0]]
+                print("Object deleted, ID: ", id)
         
         for obj in bpy.data.objects: # update the dictionary every time the scene updates
             uid = obj.id_data.session_uid # session-wide identifier for the data block
-            if uid not in existing_connection.rev_rigid_bodies_blender:
-                existing_connection.rev_rigid_bodies_blender[uid] = {'obj': obj, 'm_ID': None}
+            if obj.type == 'MESH':
+                 asset_type = 'rigid_body'
+            elif obj.type == 'ARMATURE':
+                 asset_type = 'skeleton'
             else:
-                existing_connection.rev_rigid_bodies_blender[uid]['obj'] = obj
+                asset_type = obj.type
+            # print("asset: ", obj.name, " ", obj.type, " ", asset)
+            if uid not in existing_connection.rev_assets_blender:
+                existing_connection.rev_assets_blender[uid] = {'obj': obj, 'm_ID': "None" , 'asset_type': asset_type}
+            else:
+                existing_connection.rev_assets_blender[uid]['obj'] = obj
             if not hasattr(obj, "obj_prop"):
                 obj.obj_prop = bpy.props.PointerProperty(type=CustomObjectProperties)
             obj.obj_prop.obj_name = obj.name # assign object's name as one of the custom properties
@@ -39,6 +49,7 @@ def model_change_handler(scene): # if Motive's .tak is changed with already esta
     if ConnectOperator.connection_setup is not None:  
         existing_connection = ConnectOperator.connection_setup
         if existing_connection.streaming_client is not None:
+            # if existing_connection.streaming_client.data_listener[""]
             if existing_connection.indicate_model_changed == True:
                 print("True")
                 bpy.context.window_manager.connection_status = False
