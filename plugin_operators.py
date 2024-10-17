@@ -98,7 +98,7 @@ class ConnectionSetup:
             for k, v in self.rev_assets_blender.items():
                 v['m_ID'] = "None"
             self.assets_blender = {}
-            print(self.assets_blender, self.rev_assets_blender)
+            # print(self.assets_blender, self.rev_assets_blender)
         self.assets_motive = self.streaming_client.desc_dict
     
     def request_data_descriptions(self, s_client, context):
@@ -140,6 +140,14 @@ class ConnectionSetup:
         ori = ori.to_matrix()
         eul = ori.to_euler('ZYX')
         return eul
+    
+    def quat_modification(self, q):
+        q_new = [0, 0, 0, 0]
+        q_new[0] = -q[2]
+        q_new[1] = q[3]
+        q_new[2] = q[1]
+        q_new[3] = q[0]
+        return q_new
 
     def receive_data_frame(self, data_dict):
         self.indicate_model_changed = data_dict[ 'tracked_models_changed' ]
@@ -172,12 +180,15 @@ class ConnectionSetup:
                 m_ske_val = data_dict['ske_data'][key2] # ske.m_id = key2
                 for k2, v2 in m_ske_val.items():
                     bone = self.assets_blender['skeleton'][key2]['ske_rb_map']['m_to_b'][k2]
+
                     # Z-Up with quats
-                    pos2 = self.quat_loc_yup_zup(v2['pos'])
+                    pos_modification = [i*-100 for i in v2['pos']]
+                    pos2 = self.quat_loc_yup_zup(pos_modification) 
                     rot2 = self.quat_rot_yup_zup(v2['rot'])
                 
                     # (x, y, z, w) -> (w, x, y, z)
                     rot2 = self.sca_first_last(rot2)
+                    # rot2 = self.quat_modification(rot2) # added
 
                     # sequence -> (assetID, pos, rot, frame_num, assetType, ske_rb)
                     value = (b_id, pos2, rot2, frame_num, 'skeleton', bone)
@@ -199,7 +210,6 @@ class ConnectionSetup:
             try:
                 if not self.q.empty(): 
                     q_vals = self.q.get()
-                    # print("queue_value: ", q_vals)
                     for q_val in q_vals:
                         try:
                             # live mode
@@ -298,18 +308,28 @@ class ConnectionSetup:
 
                                 # no recording
                                 else:
-                                    # my_obj = self.rev_assets_blender[self.assets_blender[q_val[0]]]['obj']
                                     if q_val[4] == 'rigid_body':
                                         my_obj = self.rev_assets_blender[q_val[0]]['obj']
+                                        my_obj.location = q_val[1]
+                                        my_obj.rotation_mode = 'QUATERNION'
+                                        my_obj.rotation_quaternion = q_val[2]
                                     elif q_val[4] == 'skeleton':
-                                        # print("q_val[0]: ", q_val[0])
                                         armature = self.rev_assets_blender[q_val[0]]['obj']
                                         my_obj = armature.pose.bones[q_val[5]]
+                                        # print(armature.worldPosition)
                                         # bpy.ops.object.mode_set(mode='POSE')
-                                    my_obj.location = q_val[1]
-                                    my_obj.rotation_mode = 'QUATERNION'
-                                    my_obj.rotation_quaternion = q_val[2]
-                                    print(my_obj.name, " ", my_obj.location, " ", my_obj.rotation_quaternion)
+                                        my_obj.location = q_val[1]
+                                        # my_obj.pose_head = q_val[1] - armature.worldPosition
+                                        # my_obj.location = armature.matrix_world.inverted() @ mathutils.Vector(q_val[1])
+                                        my_obj.rotation_mode = 'QUATERNION'
+                                        my_obj.rotation_quaternion = q_val[2]
+                                        # my_obj.rotation_quaternion = [1, 0, 0, 0]
+                                        # my_obj.rotation_quaternion = armature.rotation_euler.to_quaternion() * mathutils.Quaternion(q_val[2]) 
+                                        # creates more problem
+                                    # print("loc, rot: ", my_obj.name, " ", my_obj.location, " ", my_obj.rotation_quaternion)
+                                    # print("matrix1: ", armature.matrix_world @ my_obj.tail)
+                                    # print("getpose: ", my_obj.getPose())
+                                    # print("matrix2: ", my_obj.getMatrix(space='worldspace'))
 
                         except KeyError:
                             # if object id updated in middle of the running .tak
@@ -406,9 +426,25 @@ class MotiveArmatureOperator(Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        curr_dir = os.path.dirname(os.path.abspath(__file__))
-        file_path = os.path.join(curr_dir, "MotiveSkeleton.fbx")
-        bpy.ops.import_scene.fbx(filepath=file_path)
+        existing_conn = ConnectOperator.connection_setup
+        if existing_conn.assets_motive['ske_desc']:
+            for key, val in existing_conn.assets_motive['ske_desc'].items(): # assetType: m_ID: b_ID
+                # add an armature
+                bpy.ops.object.armature_add(location=(0, 0, 0), enter_editmode=False, \
+                                            align='WORLD', scale=(1, 1, 1))
+                armature = bpy.context.object
+                # armature.bones[0].name = key
+                armature.name = val['name']
+                bpy.ops.object.mode_set(mode='EDIT')
+                for k, v in val['rb_name'].items():
+                    bone = armature.data.edit_bones.new(k)
+                    bone.head = v['pos'] # [i*100 for i in v['pos']]
+                    print(k + " " + str(bone.head))
+                bpy.ops.object.mode_set(mode='OBJECT')
+
+        # curr_dir = os.path.dirname(os.path.abspath(__file__))
+        # file_path = os.path.join(curr_dir, "MotiveSkeleton.fbx")
+        # bpy.ops.import_scene.fbx(filepath=file_path)
         return {'FINISHED'}
 
 class StartOperator(Operator):

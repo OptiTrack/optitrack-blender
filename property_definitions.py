@@ -92,12 +92,15 @@ def create_ble_ske_mapping(m_id, b_id, m_data_dict, b_obj):
 
             ske_rb_map['m_to_b'] = {}
             ske_rb_map['b_to_m'] = {}
+            ske_rb_map['b_to_m_pos'] = {} # added
 
             for bone in armature.bones:
                 if bone.name in m_data_dict['ske_desc'][m_id]['rb_name']:
-                    m_rb_id = m_data_dict['ske_desc'][m_id]['rb_name'][bone.name]
+                    m_rb_id = m_data_dict['ske_desc'][m_id]['rb_name'][bone.name]['id']
+                    m_rb_pos = m_data_dict['ske_desc'][m_id]['rb_name'][bone.name]['pos']
                     ske_rb_map['m_to_b'][m_rb_id] = bone.name
                     ske_rb_map['b_to_m'][bone.name] = m_rb_id
+                    ske_rb_map['b_to_m_pos'][bone.name] = m_rb_pos # added
                 else:
                     print(bone.name, " not in Motive Skeleton.")
             

@@ -1774,7 +1774,8 @@ class NatNetClient:
                     desc_dict['ske_desc'][skeleton.id_num]['rb_desc'][rigid_body.id_num] = {'name' : \
                         DataDescriptions.get_as_string(rigid_body.sz_name)[ske_name_len+1:]}
                     desc_dict['ske_desc'][skeleton.id_num]['rb_name']\
-                    [DataDescriptions.get_as_string(rigid_body.sz_name)[ske_name_len+1:]] = rigid_body.id_num
+                    [DataDescriptions.get_as_string(rigid_body.sz_name)[ske_name_len+1:]] = {'id' : \
+                            rigid_body.id_num, 'pos' : rigid_body.pos}
                     
                 # desc_dict['ske_desc'][skeleton.id_num]['rb_id_list'] = (rigid_body.id_num for rigid_body \
                 #                                             in skeleton.rigid_body_description_list)
