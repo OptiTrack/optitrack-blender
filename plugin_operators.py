@@ -105,6 +105,13 @@ class ConnectionSetup:
         # Request the model definitions
         return_code = s_client.send_modeldef_command()
     
+    def subtract_ls(self, ls1, ls2):
+        subtracted = list()
+        for item1, item2 in zip(ls1, ls2):
+            item = item1 - item2
+            subtracted.append(item)
+        return subtracted
+    
     def quat_loc_yup_zup(self, pos):
         # Motive's [X, Y, Z] -> Blender [-X, Z, Y]
         pos_copy = [0]*3
@@ -427,6 +434,7 @@ class MotiveArmatureOperator(Operator):
 
     def execute(self, context):
         existing_conn = ConnectOperator.connection_setup
+        print("inside MotiveArmature: ", existing_conn.assets_motive)
         if existing_conn.assets_motive['ske_desc']:
             for key, val in existing_conn.assets_motive['ske_desc'].items(): # assetType: m_ID: b_ID
                 # add an armature
@@ -437,9 +445,25 @@ class MotiveArmatureOperator(Operator):
                 armature.name = val['name']
                 bpy.ops.object.mode_set(mode='EDIT')
                 for k, v in val['rb_name'].items():
-                    bone = armature.data.edit_bones.new(k)
-                    bone.head = v['pos'] # [i*100 for i in v['pos']]
-                    print(k + " " + str(bone.head))
+                    # print("parent_id: ", v['parent_id'], " name: ", k)
+                    parent_id = v['parent_id']
+                    if parent_id != 0:
+                        if k == 'Spine':
+                            bone = armature.data.edit_bones.new(k)
+                            parent_name = val['rb_desc'][parent_id]['name']
+                            bone.parent = armature.data.edit_bones[parent_name]
+                            local_pos = v['pos']
+                            # local_pos = [i*100 for i in local_pos]
+                            # local_pos = existing_conn.subtract_ls(v['pos'], val['rb_desc'][parent_id]['pos'])
+                            bone.head = local_pos
+                            bone.parent.tail = local_pos
+                            print(k + " pos: " + str(bone.head) + " parent_id: " + str(parent_id) + " parent_pos: " + str(bone.parent.head))
+                    else:
+                        bone = armature.data.edit_bones['Bone']
+                        bone.name = k
+                        local_pos = v['pos']
+                        # local_pos = [i*100 for i in local_pos]
+                        bone.head = local_pos
                 bpy.ops.object.mode_set(mode='OBJECT')
 
         # curr_dir = os.path.dirname(os.path.abspath(__file__))

@@ -35,6 +35,7 @@ def object_handler(scene):
                  asset_type = 'skeleton'
             else:
                 asset_type = obj.type
+            # print("inside object_handler: ", existing_connection.assets_motive)
             # print("asset: ", obj.name, " ", obj.type, " ", asset)
             if uid not in existing_connection.rev_assets_blender:
                 existing_connection.rev_assets_blender[uid] = {'obj': obj, 'm_ID': "None" , 'asset_type': asset_type}
@@ -49,7 +50,6 @@ def model_change_handler(scene): # if Motive's .tak is changed with already esta
     if ConnectOperator.connection_setup is not None:  
         existing_connection = ConnectOperator.connection_setup
         if existing_connection.streaming_client is not None:
-            # if existing_connection.streaming_client.data_listener[""]
             if existing_connection.indicate_model_changed == True:
                 print("True")
                 bpy.context.window_manager.connection_status = False
