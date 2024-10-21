@@ -14,6 +14,7 @@ class PluginMotive(Panel):
     def draw(self, context):
         layout = self.layout
         
+
         row = layout.row(align=True)
         row.label(text = "Motive Plugin", icon_value = IconsLoader.get_icon("Motive"))
 
@@ -225,4 +226,4 @@ class Info(Panel):
         row.label(text = "OptiTrack Documentation", icon_value = IconsLoader.get_icon("Info"))
         row = layout.row(align=True)
         row.operator("wm.url_open", text = "Website").url = "https://optitrack.com"
-        row.operator("wm.url_open", text = "Documentation").url = "https://docs.optitrack.com/"
+        row.operator("wm.url_open", text = "Documentation").url = "https://docs.optitrack.com/plugins/optitrack-blender-plugin/optitrack-blender-plugin"
