@@ -6,25 +6,26 @@ from .property_definitions import CustomObjectProperties
 @persistent
 def object_handler(scene):
     if bpy.context.window_manager.connection_status == True:
-        existing_connection = ConnectOperator.connection_setup
+        existing_conn = ConnectOperator.connection_setup
+        # print("inside handler: ", existing_conn.assets_motive)
         # if bpy.context.window_manager.operators:
         #     last_operator = bpy.context.window_manager.operators[-1].bl_idname
         #     if last_operator == "OBJECT_OT_delete" or last_operator == "OUTLINER_OT_delete": # check if any object is deleted with the scene update
         deleted_ids = []
-        for key in existing_connection.rev_assets_blender:
-            if str(existing_connection.rev_assets_blender[key]['obj']) == "<bpy_struct, Object invalid>":
-                deleted_ids.append((key, existing_connection.rev_assets_blender[key]['m_ID'], \
-                                    existing_connection.rev_assets_blender[key]['asset_type']))
+        for key in existing_conn.rev_assets_blender:
+            if str(existing_conn.rev_assets_blender[key]['obj']) == "<bpy_struct, Object invalid>":
+                deleted_ids.append((key, existing_conn.rev_assets_blender[key]['m_ID'], \
+                                    existing_conn.rev_assets_blender[key]['asset_type']))
         
         if deleted_ids:
             for id in deleted_ids: # if object deleted, update the dictionaries accordingly
                 if id[1] == None:
-                    del existing_connection.rev_assets_blender[id[0]]
+                    del existing_conn.rev_assets_blender[id[0]]
                 else:
-                    if id[2] in existing_connection.assets_blender:
-                        if id[1] in existing_connection.assets_blender[id[2]]:
-                            del existing_connection.assets_blender[id[2]][id[1]]
-                    del existing_connection.rev_assets_blender[id[0]]
+                    if id[2] in existing_conn.assets_blender:
+                        if id[1] in existing_conn.assets_blender[id[2]]:
+                            del existing_conn.assets_blender[id[2]][id[1]]
+                    del existing_conn.rev_assets_blender[id[0]]
                 print("Object deleted, ID: ", id)
         
         for obj in bpy.data.objects: # update the dictionary every time the scene updates
@@ -37,10 +38,10 @@ def object_handler(scene):
                 asset_type = obj.type
             # print("inside object_handler: ", existing_connection.assets_motive)
             # print("asset: ", obj.name, " ", obj.type, " ", asset)
-            if uid not in existing_connection.rev_assets_blender:
-                existing_connection.rev_assets_blender[uid] = {'obj': obj, 'm_ID': "None" , 'asset_type': asset_type}
+            if uid not in existing_conn.rev_assets_blender:
+                existing_conn.rev_assets_blender[uid] = {'obj': obj, 'm_ID': "None" , 'asset_type': asset_type}
             else:
-                existing_connection.rev_assets_blender[uid]['obj'] = obj
+                existing_conn.rev_assets_blender[uid]['obj'] = obj
             if not hasattr(obj, "obj_prop"):
                 obj.obj_prop = bpy.props.PointerProperty(type=CustomObjectProperties)
             obj.obj_prop.obj_name = obj.name # assign object's name as one of the custom properties

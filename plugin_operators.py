@@ -67,8 +67,8 @@ class ConnectionSetup:
                                 "SetProperty,,Trained Markerset Markers,false",
                                 "SetProperty,,Trained Markerset Bones,false",
                                 "SetProperty,,Devices,false",
-                                # "SetProperty,,Skeleton Coordinates,Global",
-                                "SetProperty,,Skeleton Coordinates,Local",
+                                "SetProperty,,Skeleton Coordinates,Global",
+                                # "SetProperty,,Skeleton Coordinates,Local",
                                 "SetProperty,,Bone Naming Convention,FBX",
                                 "SetProperty,,Up Axis,Y-Axis"]
                 for sz_command in sz_commands:
@@ -105,6 +105,13 @@ class ConnectionSetup:
         # Request the model definitions
         return_code = s_client.send_modeldef_command()
     
+    def add_ls(self, ls1, ls2):
+        added = list()
+        for item1, item2 in zip(ls1, ls2):
+            item = item1 + item2
+            added.append(item)
+        return added
+    
     def subtract_ls(self, ls1, ls2):
         subtracted = list()
         for item1, item2 in zip(ls1, ls2):
@@ -136,6 +143,7 @@ class ConnectionSetup:
         return p_dash
     
     def sca_first_last(self, ori):
+        ori = list(ori) # comment out later
         ori.append(ori.pop(0))
         return ori
     
@@ -148,13 +156,13 @@ class ConnectionSetup:
         eul = ori.to_euler('ZYX')
         return eul
     
-    def quat_modification(self, q):
-        q_new = [0, 0, 0, 0]
-        q_new[0] = -q[2]
-        q_new[1] = q[3]
-        q_new[2] = q[1]
-        q_new[3] = q[0]
-        return q_new
+    # def quat_modification(self, q): # only resolves lower body
+    #     q_new = [0, 0, 0, 0]
+    #     q_new[0] = -q[2]
+    #     q_new[1] = q[3]
+    #     q_new[2] = q[1]
+    #     q_new[3] = q[0]
+    #     return q_new
 
     def receive_data_frame(self, data_dict):
         self.indicate_model_changed = data_dict[ 'tracked_models_changed' ]
@@ -189,9 +197,10 @@ class ConnectionSetup:
                     bone = self.assets_blender['skeleton'][key2]['ske_rb_map']['m_to_b'][k2]
 
                     # Z-Up with quats
-                    pos_modification = [i*-100 for i in v2['pos']]
-                    pos2 = self.quat_loc_yup_zup(pos_modification) 
-                    rot2 = self.quat_rot_yup_zup(v2['rot'])
+                    pos2 = v2['pos']
+                    rot2 = v2['rot']
+                    # pos2 = self.quat_loc_yup_zup(v2['pos']) # pos_modification)
+                    # rot2 = self.quat_rot_yup_zup(v2['rot'])
                 
                     # (x, y, z, w) -> (w, x, y, z)
                     rot2 = self.sca_first_last(rot2)
@@ -287,14 +296,37 @@ class ConnectionSetup:
                                     # my_obj = self.rev_assets_blender[self.assets_blender[q_val[0]]]['obj'] # new_id
                                     if q_val[4] == 'rigid_body':
                                         my_obj = self.rev_assets_blender[q_val[0]]['obj']
+                                        my_obj.location = q_val[1]
+                                        my_obj.keyframe_insert(data_path="location", frame=q_val[3])
+                                        my_obj.rotation_mode = 'QUATERNION'
+                                        my_obj.rotation_quaternion = q_val[2]
+                                        my_obj.keyframe_insert(data_path="rotation_quaternion",frame=q_val[3])
                                     elif q_val[4] == 'skeleton':
                                         armature = self.rev_assets_blender[q_val[0]]['obj']
-                                        my_obj = armature.pose.bones[q_val[5]]
-                                    my_obj.location = q_val[1]
-                                    my_obj.keyframe_insert(data_path="location", frame=q_val[3])
-                                    my_obj.rotation_mode = 'QUATERNION'
-                                    my_obj.rotation_quaternion = q_val[2]
-                                    my_obj.keyframe_insert(data_path="rotation_quaternion",frame=q_val[3])
+                                        for bone in armature.pose.bones[:]:
+                                            print(bone.name)
+                                            bone.location = q_val[1]
+                                            bone.keyframe_insert(data_path="location", frame=q_val[3])
+                                            bone.rotation_mode = 'QUATERNION'
+                                            bone.rotation_quaternion = q_val[2]
+                                            bone.keyframe_insert(data_path="rotation_quaternion",frame=q_val[3])
+                                        # my_obj = armature.pose.bones[q_val[5]]
+                                        # print(armature.worldPosition)
+                                        # bpy.ops.object.mode_set(mode='POSE')
+                                        # my_obj.pose_head = q_val[1] - armature.worldPosition
+                                        # my_obj.location = armature.matrix_world.inverted() @ mathutils.Vector(q_val[1])
+                                        
+                                    
+                                    # if q_val[4] == 'rigid_body':
+                                    #     my_obj = self.rev_assets_blender[q_val[0]]['obj']
+                                    # elif q_val[4] == 'skeleton':
+                                    #     armature = self.rev_assets_blender[q_val[0]]['obj']
+                                    #     my_obj = armature.pose.bones[q_val[5]]
+                                    # my_obj.location = q_val[1]
+                                    # my_obj.keyframe_insert(data_path="location", frame=q_val[3])
+                                    # my_obj.rotation_mode = 'QUATERNION'
+                                    # my_obj.rotation_quaternion = q_val[2]
+                                    # my_obj.keyframe_insert(data_path="rotation_quaternion",frame=q_val[3])
 
                                 # selective keyframes
                                 elif bpy.context.window_manager.record1_status == True:
@@ -333,7 +365,7 @@ class ConnectionSetup:
                                         # my_obj.rotation_quaternion = [1, 0, 0, 0]
                                         # my_obj.rotation_quaternion = armature.rotation_euler.to_quaternion() * mathutils.Quaternion(q_val[2]) 
                                         # creates more problem
-                                    # print("loc, rot: ", my_obj.name, " ", my_obj.location, " ", my_obj.rotation_quaternion)
+                                    print("loc, rot: ", my_obj.name, " ", my_obj.location, " ", my_obj.rotation_quaternion)
                                     # print("matrix1: ", armature.matrix_world @ my_obj.tail)
                                     # print("getpose: ", my_obj.getPose())
                                     # print("matrix2: ", my_obj.getMatrix(space='worldspace'))
@@ -420,10 +452,10 @@ class RefreshAssetsOperator(Operator):
     bl_label = "Refresh Assets"
 
     def execute(self, context):
-        existing_connection = ConnectOperator.connection_setup
-        existing_connection.request_data_descriptions(existing_connection.streaming_client, context)
+        existing_conn = ConnectOperator.connection_setup
+        existing_conn.request_data_descriptions(existing_conn.streaming_client, context)
         if context.window_manager.start_status:
-            existing_connection.pause_button_clicked(context)
+            existing_conn.pause_button_clicked(context)
         return {'FINISHED'}
 
 class MotiveArmatureOperator(Operator):
@@ -434,41 +466,206 @@ class MotiveArmatureOperator(Operator):
 
     def execute(self, context):
         existing_conn = ConnectOperator.connection_setup
-        print("inside MotiveArmature: ", existing_conn.assets_motive)
-        if existing_conn.assets_motive['ske_desc']:
-            for key, val in existing_conn.assets_motive['ske_desc'].items(): # assetType: m_ID: b_ID
-                # add an armature
-                bpy.ops.object.armature_add(location=(0, 0, 0), enter_editmode=False, \
-                                            align='WORLD', scale=(1, 1, 1))
-                armature = bpy.context.object
-                # armature.bones[0].name = key
-                armature.name = val['name']
-                bpy.ops.object.mode_set(mode='EDIT')
-                for k, v in val['rb_name'].items():
-                    # print("parent_id: ", v['parent_id'], " name: ", k)
-                    parent_id = v['parent_id']
-                    if parent_id != 0:
-                        if k == 'Spine':
-                            bone = armature.data.edit_bones.new(k)
-                            parent_name = val['rb_desc'][parent_id]['name']
-                            bone.parent = armature.data.edit_bones[parent_name]
-                            local_pos = v['pos']
-                            # local_pos = [i*100 for i in local_pos]
-                            # local_pos = existing_conn.subtract_ls(v['pos'], val['rb_desc'][parent_id]['pos'])
-                            bone.head = local_pos
-                            bone.parent.tail = local_pos
-                            print(k + " pos: " + str(bone.head) + " parent_id: " + str(parent_id) + " parent_pos: " + str(bone.parent.head))
-                    else:
-                        bone = armature.data.edit_bones['Bone']
-                        bone.name = k
-                        local_pos = v['pos']
-                        # local_pos = [i*100 for i in local_pos]
-                        bone.head = local_pos
-                bpy.ops.object.mode_set(mode='OBJECT')
+        # print("inside MotiveArmature: ", existing_conn.assets_motive)
+        if existing_conn.assets_motive and existing_conn.assets_motive['ske_desc']:
+            pass
+        else:
+            existing_conn.get_desc_dict(context)
+        #     existing_conn.request_data_descriptions(existing_conn.streaming_client, context)
+        
 
-        # curr_dir = os.path.dirname(os.path.abspath(__file__))
-        # file_path = os.path.join(curr_dir, "MotiveSkeleton.fbx")
-        # bpy.ops.import_scene.fbx(filepath=file_path)
+        for key, val in existing_conn.assets_motive['ske_desc'].items(): # assetType: m_ID: b_ID
+            ## Method 1
+            # add an armature
+            bpy.ops.object.armature_add(location=(0, 0, 0), enter_editmode=False, \
+                                        align='WORLD', scale=(1, 1, 1))
+            armature_object = bpy.context.object
+            # armature.bones[0].name = key
+            armature_object.name = val['name']
+
+            ## Method 2
+            # # Create a new armature
+            # armature = bpy.data.armatures.new("Root")
+            # armature_object = bpy.data.objects.new(val['name'], armature)
+            # # Link the armature object to the scene
+            # bpy.context.collection.objects.link(armature_object) # this is where obj is introduced in \
+            # # the scene collection list
+            # # Set the armature as the active object
+            # bpy.context.view_layer.objects.active = armature_object
+            
+            bpy.ops.object.mode_set(mode='EDIT')  # Switch to edit mode
+
+            # for k, v in val['rb_desc'].items():
+            #     parent_id = v['parent_id']
+            #     parent_name = val['rb_desc'][parent_id]['name']
+            #     child_id = val['parent_to_children'][parent_id][0]
+
+            #     if parent_id != 0:
+
+            ####### Method 2 (with children linked)
+            for k, v in val['rb_name'].items():
+                parent_id = v['parent_id']
+                local_pos = v['pos']
+                if parent_id != 0:
+                    parent_name = val['rb_desc'][parent_id]['name']
+                    parent_bone = armature_object.data.edit_bones.get(parent_name)
+                else:
+                    parent_bone = armature_object.data.edit_bones.get('Bone')
+                    parent_bone.tail = local_pos
+                bone = armature_object.data.edit_bones.new(k)
+                bone.parent = parent_bone
+                bone.head = parent_bone.tail # existing_conn.add_ls(list(parent_bone.head), local_pos)
+                # print(bone.name + " " + str(list(parent_bone.head)) + " " + str(local_pos) + " " +\
+                #       str(list(bone.head)))
+                if val['parent_to_children'][parent_id]:
+                    child_id = val['parent_to_children'][parent_id][0]
+                    child_pos = val['rb_desc'][child_id]['pos']
+                    bone.tail = existing_conn.add_ls(list(bone.head), child_pos)
+                    # print(bone.name + " " + str(list(bone.head)) + " " + str(child_pos) + " " +\
+                    #   str(list(bone.tail)))
+                else:
+                    direction = parent_bone.tail - parent_bone.head
+                    if direction.length > 0:
+                        direction.normalize()
+                    bone.tail = bone.head + (0.2 * direction)
+                # bone.use_connect = True
+                print("bone head and tail: " + bone.name + " " + str(parent_bone.head) + \
+                      " and " + str(parent_bone.tail))
+            ###################################
+
+
+            ##### Method 1
+            # for k, v in val['rb_name'].items():
+            #     parent_id = v['parent_id']
+            #     # child_id = val['parent_to_children'][parent_id][0]
+            #     # print(val['parent_to_children'][parent_id])
+            #     if parent_id != 0:
+            #         # parent_name = val['rb_desc'][parent_id]['name']
+            #         # parent_bone = armature_object.data.edit_bones.get(parent_name)
+            #         # bone = armature_object.data.edit_bones.new(k)
+            #         # bone.parent = parent_bone
+            #         # local_pos = v['pos']
+            #         # bone.head = existing_conn.add_ls(list(parent_bone.head), local_pos)
+
+
+            #         if k in ['LeftUpLeg', 'RightUpLeg']:
+            #             parent_name = val['rb_desc'][parent_id]['name']
+            #             parent_bone = armature_object.data.edit_bones.get(parent_name)
+            #             bone = armature_object.data.edit_bones.new(k)
+            #             bone.parent = parent_bone
+            #             local_pos = v['pos']
+            #             # local_pos = existing_conn.quat_loc_yup_zup(v['pos'])
+            #             bone.head = existing_conn.add_ls(list(parent_bone.head), local_pos)
+            #             bone.use_connect = False # cannot connect this, we need that gap
+
+            #             # # Switch to Pose mode to add a constraint
+            #             # bpy.ops.object.mode_set(mode='POSE')
+                        
+            #             # # Access the pose bone
+            #             # pose_child_bone = armature_object.pose.bones[k]
+                        
+            #             # # Create a Copy Location constraint on the child bone to follow the parent bone
+            #             # # constraint = pose_child_bone.constraints.new(type='COPY_LOCATION')
+            #             # constraint = pose_child_bone.constraints.new(type='CHILD_OF')
+            #             # constraint.target = armature_object
+            #             # constraint.subtarget = parent_name
+            #             # # constraint.use_offset = True  # Keep the offset so they aren't connected visually
+            #             # bpy.ops.object.mode_set(mode='EDIT')
+            #         else:
+            #             parent_name = val['rb_desc'][parent_id]['name']
+            #             # print(str(parent_id) + " " + parent_name)
+            #             # parent_bone = armature_object.data.edit_bones[parent_name]
+            #             parent_bone = armature_object.data.edit_bones.get(parent_name)
+            #             local_pos = v['pos']
+            #             # local_pos = existing_conn.quat_loc_yup_zup(v['pos'])
+            #             parent_bone.tail = existing_conn.add_ls(list(parent_bone.head), local_pos)
+                        
+            #             bone = armature_object.data.edit_bones.new(k)
+            #             bone.parent = parent_bone
+            #             bone.head = parent_bone.tail
+            #             bone.use_connect = True
+
+            #             if k in ['Head', 'LeftHand', 'RightHand', 'LeftToeBase', 'RightToeBase']:
+            #                 direction = parent_bone.tail - parent_bone.head
+            #                 if direction.length > 0:
+            #                     direction.normalize()
+                            
+            #                 bone.tail = bone.head + (0.1 * direction)
+
+            #             # bone.use_local_location = True # don't know if it is doing anything
+            #             # # local_pos = existing_conn.subtract_ls(v['pos'], val['rb_desc'][parent_id]['pos'])
+            #             # # bone.parent.tail_local = local_pos
+            #             # # bone.head_local = bone.parent.tail_local
+            #             # print(k + " pos: " + str(bone.head) + " parent_id: " + str(parent_id) + \
+            #             #         " parent_pos: " + str(bone.parent.head) + "bone length: " + str(bone.length))
+            #             # --------------------------------
+            #             # parent_head = parent_bone.head
+            #             # direction = mathutils.Vector(local_pos - parent_head)
+            #             # # Calculate roll based on parent position
+            #             # parent_head = bone.parent.head
+            #             # direction = mathutils.Vector(local_pos) - mathutils.Vector(parent_head)
+            #             # direction.normalize()
+                        
+            #             # # Define a reference vector (usually along the Z axis)
+            #             # ref_vector = mathutils.Vector((0, 1, 0))  # Adjust as needed for your setup
+                        
+            #             # # Calculate roll using the direction and reference
+            #             # roll = direction.angle(ref_vector)
+            #             # if direction.x < 0:
+            #             #     roll = -roll
+                        
+            #             # # Set the roll value
+            #             # bone.roll = roll
+            #     else:
+            #         bone = armature_object.data.edit_bones.new(k)
+            #         parent_bone = armature_object.data.edit_bones.get('Bone')
+            #         bone.use_local_location = True
+            #         # bone.name = k
+            #         local_pos = v['pos']
+            #         parent_bone.tail = local_pos
+            #         bone.parent = parent_bone
+            #         # local_pos = existing_conn.quat_loc_yup_zup(v['pos'])
+            #         bone.head = local_pos
+            #         bone.use_connect = False
+            #         # bone.head_local = local_pos  # + armature.worldPosition
+            #         # print(k + " bone pos: " + str(bone.head) +" bone length: " + str(bone.length))
+                
+            #     print("bone head and tail: " + bone.name + " " + str(parent_bone.head) + " and " \
+            #               + str(parent_bone.tail))
+            
+            # # # Bones don't show until you get out of EDIT mode
+            # # bpy.ops.object.mode_set(mode='POSE')
+            # # bones = ['LeftUpLeg', 'RightUpLeg']
+            # # for bone_name in bones:
+            # #     bone = armature_object.pose.bones.get(bone_name)
+            # #     constraint = bone.constraints.new(type='COPY_LOCATION')
+            # #     parent_bone = armature_object.pose.bones.get("Hips")
+            # #     # Set the target object to the armature itself
+            # #     constraint.target = armature_object
+                
+            # #     # Specify the bone to follow (the parent bone)
+            # #     constraint.subtarget = "Hips"
+                
+            # #     # Disable the connection to the parent
+            # #     constraint.use_offset = True
+
+            # # # Ensure display settings for relationship lines
+            # # armature_object.data.show_relationship_lines = True
+            ##########################
+            
+            bpy.ops.object.mode_set(mode='OBJECT')
+            # bpy.context.space_data.overlay.show_relationship_lines = True
+
+
+            # for arm in bpy.data.armatures:
+            #     print(str(arm) + " " + arm.name)
+            # for bone in bpy.data.armatures["Root"].bones:
+            #     if bone.parent is not None:
+            #         bone.parent.tail_local = bone.head_local
+
+    # curr_dir = os.path.dirname(os.path.abspath(__file__))
+    # file_path = os.path.join(curr_dir, "MotiveSkeleton.fbx")
+    # bpy.ops.import_scene.fbx(filepath=file_path)
         return {'FINISHED'}
 
 class StartOperator(Operator):
