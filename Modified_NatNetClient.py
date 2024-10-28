@@ -1788,6 +1788,9 @@ class NatNetClient:
                         desc_dict['ske_desc'][skeleton.id_num]['parent_to_children'][parent_id] = []
                     desc_dict['ske_desc'][skeleton.id_num]['parent_to_children'][parent_id].append(v['id'])
 
+                print(desc_dict['ske_desc'][skeleton.id_num]['rb_name'])
+                print(desc_dict['ske_desc'][skeleton.id_num]['parent_to_children'])
+
                     
                 # desc_dict['ske_desc'][skeleton.id_num]['rb_id_list'] = (rigid_body.id_num for rigid_body \
                 #                                             in skeleton.rigid_body_description_list)
