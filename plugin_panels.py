@@ -1,6 +1,7 @@
 import bpy
 from . import plugin_operators
 from .plugin_operators import ConnectOperator
+from .plugin_skeletons import MotiveArmatureOperator
 # from .plugin_skeletons import skeletonDict
 from bpy.types import Panel
 from .icon_viewer import IconsLoader
@@ -87,8 +88,8 @@ class Connection(Panel):
             
             layout.row().separator()
             row = layout.row(align=True)
-            row.operator(plugin_operators.MotiveArmatureOperator.bl_idname, \
-                         text=plugin_operators.MotiveArmatureOperator.bl_label, \
+            row.operator(MotiveArmatureOperator.bl_idname, \
+                         text=MotiveArmatureOperator.bl_label, \
                             icon = 'OUTLINER_OB_ARMATURE')
             
             row = layout.row(align=True)

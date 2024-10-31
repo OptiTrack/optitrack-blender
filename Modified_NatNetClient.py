@@ -1768,34 +1768,15 @@ class NatNetClient:
                 desc_dict['ske_desc'][skeleton.id_num] = {}
                 desc_dict['ske_desc'][skeleton.id_num]['name'] = \
                     DataDescriptions.get_as_string(skeleton.name)
-                desc_dict['ske_desc'][skeleton.id_num]['rb_desc'] = {}
+                desc_dict['ske_desc'][skeleton.id_num]['rb_id'] = {}
                 desc_dict['ske_desc'][skeleton.id_num]['rb_name'] = {}
-                desc_dict['ske_desc'][skeleton.id_num]['parent_to_children'] = {}
-                # desc_dict['ske_desc'][skeleton.id_num]['rb_name'][rigid_body.parent_id] = []
                 for rigid_body in skeleton.rigid_body_description_list:
-                    # desc_dict['ske_desc'][skeleton.id_num][rigid_body.parent_id] = []
-                    desc_dict['ske_desc'][skeleton.id_num]['rb_desc'][rigid_body.id_num] = {'name' : \
-                        DataDescriptions.get_as_string(rigid_body.sz_name)[ske_name_len+1:], 'pos' : rigid_body.pos}
+                    desc_dict['ske_desc'][skeleton.id_num]['rb_id'][rigid_body.id_num] = {'name' : \
+                        DataDescriptions.get_as_string(rigid_body.sz_name)[ske_name_len+1:], 'pos' : \
+                            rigid_body.pos, 'parent_id' : rigid_body.parent_id}
                     desc_dict['ske_desc'][skeleton.id_num]['rb_name']\
                     [DataDescriptions.get_as_string(rigid_body.sz_name)[ske_name_len+1:]] = {'id' : \
                             rigid_body.id_num, 'pos' : rigid_body.pos, 'parent_id' : rigid_body.parent_id}
-                    # desc_dict['ske_desc'][skeleton.id_num][rigid_body.parent_id].append(rigid_body.id_num)
-            
-            for key, val in desc_dict['ske_desc'].items():
-                for k, v in val['rb_name'].items():
-                    parent_id = v['parent_id']
-                    if parent_id not in desc_dict['ske_desc'][skeleton.id_num]['parent_to_children']:
-                        desc_dict['ske_desc'][skeleton.id_num]['parent_to_children'][parent_id] = []
-                    desc_dict['ske_desc'][skeleton.id_num]['parent_to_children'][parent_id].append(v['id'])
-
-                print(desc_dict['ske_desc'][skeleton.id_num]['rb_name'])
-                print(desc_dict['ske_desc'][skeleton.id_num]['parent_to_children'])
-
-                    
-                # desc_dict['ske_desc'][skeleton.id_num]['rb_id_list'] = (rigid_body.id_num for rigid_body \
-                #                                             in skeleton.rigid_body_description_list)
-                # desc_dict['ske_desc'][skeleton.id_num]['rb_name_list'] = [rigid_body.sz_name for rigid_body \
-                #                                             in skeleton.rigid_body_description_list]
 
         elif message_id == self.NAT_SERVERINFO :
             trace( "Message ID  : %3.1d NAT_SERVERINFO"% message_id )

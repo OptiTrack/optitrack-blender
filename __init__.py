@@ -18,6 +18,7 @@ if "bpy" not in locals():
 def register():
     from . import plugin_panels
     from . import plugin_operators
+    from . import plugin_skeletons
     from . import Modified_NatNetClient
     from . import property_definitions
     from . import app_handlers
@@ -29,6 +30,7 @@ def register():
         import importlib
         importlib.reload(plugin_panels)
         importlib.reload(plugin_operators)
+        importlib.reload(plugin_skeletons)
         importlib.reload(Modified_NatNetClient)
         importlib.reload(property_definitions)
         importlib.reload(app_handlers)
@@ -45,7 +47,7 @@ def register():
                plugin_operators.StartRecordOperator, plugin_operators.StopRecordOperator,
                plugin_operators.StartEndFrameOperator, plugin_operators.StartFrameRecordOperator, 
                plugin_operators.StopFrameRecordOperator, plugin_operators.newActionOperator,
-               plugin_operators.deleteActionOperator, plugin_operators.MotiveArmatureOperator,
+               plugin_operators.deleteActionOperator, plugin_skeletons.MotiveArmatureOperator,
                plugin_panels.Info]
 
     for cls in classes:
