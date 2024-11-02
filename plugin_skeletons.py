@@ -55,7 +55,7 @@ class MotiveArmatureOperator(Operator):
         create_armature.update_dict()
         
         for key, val in dt.items():
-            bone_conv = create_armature.find_bone_convention(val['rb_name'])
+            bone_conv = create_armature.find_bone_convention(key)
             # Create a new armature
             armature = bpy.data.armatures.new("Root")
             armature_object = bpy.data.objects.new(val['name'], armature)
@@ -70,14 +70,34 @@ class MotiveArmatureOperator(Operator):
             arm_dict = create_armature.adding_armature_entry(key, bone_conv)
 
             for k, v in arm_dict.items():
-                bone = armature_object.data.edit_bones.new(key)
-                bone.parent = val[0]
-                bone.head = val[1]
-                # bone.head = existing_conn.quat_loc_yup_zup(val[1])
-                bone.tail = val[2]
-                # bone.tail = existing_conn.quat_loc_yup_zup(val[2])
-                bone.roll = math.radians(val[3])
-                bone.use_connect = val[4]
+                bone = armature_object.data.edit_bones.new(k)
+                if v[0] != None:
+                    bone.parent = armature_object.data.edit_bones.get(v[0])
+                bone.head = v[1]
+                # bone.head = existing_conn.quat_loc_yup_zup(v[1])
+                bone.tail = v[2]
+                # bone.tail = existing_conn.quat_loc_yup_zup(v[2])
+                bone.roll = math.radians(v[3])
+                bone.use_connect = True
+                # if v[4] == True:
+                #     bone.use_connect = True
+                # else:
+                #     bone.use_offset = True
+                #     bpy.ops.object.mode_set(mode='POSE')
+                #     # Select the child bone to apply constraints
+                #     child_bone_pose = armature_object.pose.bones[k]
+                #     # Create a Child Of constraint
+                #     constraint = child_bone_pose.constraints.new(type='CHILD_OF')
+                #     constraint.target = armature_object  # Replace with your target object
+                #     constraint.subtarget = bone.parent.name
+
+                #     # Enable Keep Offset
+                #     constraint.use_offset = True
+                #     bpy.ops.object.mode_set(mode='EDIT')
+            
+                # print("bone: " + bone.name + " parent: " + str(v[0]) + " head: " + str(bone.head) + \
+                #     " tail: " + str(bone.tail) + " roll: " + str(math.degrees(bone.roll)))
+                print("bone: " + bone.name + " bone matrix: " + str(bone.matrix))
 
             bpy.ops.object.mode_set(mode='OBJECT') # Switch back to object mode
         
@@ -101,23 +121,26 @@ class CreateArmature:
                                 'thigh_r', 'calf_r', 'foot_l', 'ball_r']
                             }
         
-    def find_bone_convention(self):
-        if 'Hip' in self.dt:
+    def find_bone_convention(self, key):
+        if 'Hip' in self.dt[key]['rb_name']:
             return 'Motive'
-        elif 'Hips' in self.dt:
+        elif 'Hips' in self.dt[key]['rb_name']:
             return 'FBX'
-        elif 'pelvis' in self.dt:
+        elif 'pelvis' in self.dt[key]['rb_name']:
             return 'UnrealEngine'
         else:
             return None
 
     def get_global_pos(self, item, dt): # dt = desc_dict['ske_desc'][skeleton_id]['rb_name']
-        total_pos = 0
+        total_pos = [0, 0, 0]
         current_bone = item
 
         while current_bone is not None:
             # Add local position of the current item to the total
-            total_pos += dt[current_bone]['pos']
+            current_bone_pos = dt[current_bone]['pos']
+            total_pos[0] += current_bone_pos[0]
+            total_pos[1] += current_bone_pos[1]
+            total_pos[2] += current_bone_pos[2]
             # Move to the parent
             current_bone = dt[current_bone]['parent_name']
         
@@ -125,25 +148,28 @@ class CreateArmature:
     
     def update_dict(self): # dt = desc_dict['ske_desc']
         for key, val in self.dt.items():
-            self.dt[key.id_num]['parent_to_children'] = {}
+            self.dt[key]['parent_to_children'] = {}
             for k, v in val['rb_name'].items():
                 parent_id = v['parent_id']
                 if parent_id != 0:
                     parent_name = val['rb_id'][parent_id]['name']
                     val['rb_name'][k]['parent_name'] = parent_name
-                    if parent_name not in self.dt['ske_desc'][key.id_num]['parent_to_children']:
-                        self.dt['ske_desc'][key.id_num]['parent_to_children'][parent_name] = []
-                    self.dt['ske_desc'][key.id_num]['parent_to_children'][parent_name].append(k)
+                    if parent_name not in self.dt[key]['parent_to_children']:
+                        self.dt[key]['parent_to_children'][parent_name] = []
+                    self.dt[key]['parent_to_children'][parent_name].append(k)
                 else:
                     val['rb_name'][k]['parent_name'] = None
         
         for key, val in self.dt.items():
             for k, v in val['rb_name'].items():
-                if k in self.dt['ske_desc'][key.id_num]['parent_to_children']:
-                    v['children'] = self.dt['ske_desc'][key.id_num]['parent_to_children'][k]
                 if v['parent_name'] != None:
                     v['global_pos'] = self.get_global_pos(k, self.dt[key]['rb_name'])
-        
+                else:
+                    v['global_pos'] = v['pos']
+                
+                v['children'] = []
+                if k in self.dt[key]['parent_to_children']:
+                    v['children'] = self.dt[key]['parent_to_children'][k]
         return self.dt
 
     def get_parent(self, id, bone_name):
@@ -160,10 +186,14 @@ class CreateArmature:
         parent_name = self.dt[id]['rb_name'][bone_name]['parent_name']
         parent_pos = self.dt[id]['rb_name'][parent_name]['global_pos']
         bone_pos = self.dt[id]['rb_name'][bone_name]['global_pos']
-        direction = parent_pos - bone_pos
-        if direction.length > 0:
-            direction.normalize()
-        end_loc = bone_pos + (0.1 * direction)
+        direction = list(map(lambda x, y: x - y, bone_pos, parent_pos))
+        dir_len = math.sqrt(direction[0]**2 + direction[1]**2 + direction[2]**2)
+        if dir_len > 0:
+            dir_normalized = list(map(lambda x : x/dir_len, direction))
+            end_loc = list(map(lambda x, y : x + 0.1 * y, bone_pos, dir_normalized)) 
+            # bone_pos + (0.1 * dir_normalized)
+        else:
+            end_loc = bone_pos
         return end_loc
     
     def adding_armature_entry(self, id, bone_conv): # dt = desc_dict['ske_desc'][skeleton_id]['rb_name']
@@ -288,4 +318,31 @@ class CreateArmature:
 #                     self.ske_rb_map['b_to_m'][bone] = m_rb_id
 #                 else:
 #                     print(bone.name, " not in Motive Skeleton.")
+#-----------------------------------------------------------------------------------------------------------
+
+#-----------------------------------------------------------------------------------------------------------
+# ### print keyframe data for a given frame
+# import bpy
+
+# print("--------------------------------------------------------------------------------------")
+# # Set the frame you want to check
+# target_frame = 161  # Change this to the desired frame number
+
+# # Set the scene's frame to the target frame
+# bpy.context.scene.frame_set(target_frame)
+
+# # Iterate over all objects in the scene
+# for obj in bpy.context.scene.objects:
+#     if obj.animation_data and obj.animation_data.action:
+#         action = obj.animation_data.action
+#         print(f"Object: {obj.name}")
+
+#         # Iterate through all FCurves in the action
+#         for fcurve in action.fcurves:
+#             # Print the data for the specified frame
+#             for keyframe in fcurve.keyframe_points:
+#                 if keyframe.co[0] == target_frame:
+#                     rounded_val = round(keyframe.co[1], 3)
+#                     print(f"  FCurve: {fcurve.data_path} | Array Index: {fcurve.array_index} | \
+#                           Value: {rounded_val}")
 #-----------------------------------------------------------------------------------------------------------

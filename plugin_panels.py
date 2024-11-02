@@ -272,7 +272,7 @@ class AllocatedArmatureBones(Panel):
             for k, v in val['ske_rb_map']['b_to_m'].items(): # m_ID: b_ID
                 row = layout.row(align=True)
                 row.label(text=k + " : " + str(v) + " : " + \
-                    existing_conn.assets_motive['ske_desc'][key]['rb_desc'][v]['name'])
+                    existing_conn.assets_motive['ske_desc'][key]['rb_id'][v]['name'])
 
 class Info(Panel):
     bl_idname = "VIEW3D_PT_info"

@@ -199,6 +199,7 @@ class ConnectionSetup:
                     # Z-Up with quats
                     pos2 = v2['pos']
                     rot2 = v2['rot']
+                    print("receiving frame: ", rot2)
                     # pos2 = self.quat_loc_yup_zup(v2['pos']) # pos_modification)
                     # rot2 = self.quat_rot_yup_zup(v2['rot'])
                 
