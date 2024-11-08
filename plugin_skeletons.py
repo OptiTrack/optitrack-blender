@@ -4,8 +4,15 @@
 # desc_dict['rb_desc'][rb.m_id]['name'] = rb.m_name
 
 # desc_dict['ske_desc'][ske.m_id]['name'] = ske.m_name
-# desc_dict['ske_desc'][ske.m_id]['rb_desc'][rb.m_id]['name'] = rb.m_name
-# desc_dict['ske_desc'][ske.m_id]['rb_name'][rb.m_name] = rb.m_id
+# desc_dict['ske_desc'][ske.m_id]['rb_id'][rb.m_id]['name'] = rb.m_name
+# desc_dict['ske_desc'][ske.m_id]['rb_id'][rb.m_id]['pos'] = rb.pos
+# desc_dict['ske_desc'][ske.m_id]['rb_id'][rb.m_id]['parent_id'] = rb.parent_id
+# desc_dict['ske_desc'][ske.m_id]['rb_name'][rb.m_name]['id'] = rb.m_id
+# desc_dict['ske_desc'][ske.m_id]['rb_name'][rb.m_name]['pos'] = rb.pos
+# desc_dict['ske_desc'][ske.m_id]['rb_name'][rb.m_name]['parent_id'] = rb.parent_id
+# desc_dict['ske_desc'][ske.m_id]['rb_name'][rb.m_name]['global_pos'] = rb.global_tpose
+# desc_dict['ske_desc'][ske.m_id]['rb_name'][rb.m_name]['children'] = rb.children
+# desc_dict['ske_desc'][ske.m_id]['rb_name'][rb.m_name]['global_tpose_rot'] = rb.global_rot_tpose
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 # # MoCapData -
@@ -77,6 +84,7 @@ class MotiveArmatureOperator(Operator):
                 # bone.head = existing_conn.quat_loc_yup_zup(v[1])
                 bone.tail = v[2]
                 # bone.tail = existing_conn.quat_loc_yup_zup(v[2])
+                val['rb_name'][k]['global_tpose_rot'] = math.radians(v[3])
                 bone.roll = math.radians(v[3])
                 bone.use_connect = True
                 # if v[4] == True:
@@ -97,9 +105,18 @@ class MotiveArmatureOperator(Operator):
             
                 # print("bone: " + bone.name + " parent: " + str(v[0]) + " head: " + str(bone.head) + \
                 #     " tail: " + str(bone.tail) + " roll: " + str(math.degrees(bone.roll)))
-                print("bone: " + bone.name + " bone matrix: " + str(bone.matrix))
+                bone_pos = bone.matrix.decompose()[0]
+                # print("bone: " + bone.name + " bone pos: " + str(bone_pos))
 
             bpy.ops.object.mode_set(mode='OBJECT') # Switch back to object mode
+        
+        # bpy.ops.object.mode_set(mode='POSE')
+        # pose_data = {}
+        # for bone in armature.pose.bones:
+        #     pose_data[bone.name] = {"location": bone.location.copy(), 
+        #                             "rotation": bone.rotation_quaternion.copy(),
+        #                             "scale": bone.scale.copy()}
+        # bpy.ops.object.mode_set(mode='OBJECT')
         
         return {'FINISHED'}
 
@@ -170,6 +187,8 @@ class CreateArmature:
                 v['children'] = []
                 if k in self.dt[key]['parent_to_children']:
                     v['children'] = self.dt[key]['parent_to_children'][k]
+                # print("desc dict: ", k, " global pos: ", str(round(v['global_pos'][0], 4)), ", ",\
+                #       str(round(v['global_pos'][1], 4)), ", ", str(round(v['global_pos'][2], 4)))
         return self.dt
 
     def get_parent(self, id, bone_name):
@@ -345,4 +364,68 @@ class CreateArmature:
 #                     rounded_val = round(keyframe.co[1], 3)
 #                     print(f"  FCurve: {fcurve.data_path} | Array Index: {fcurve.array_index} | \
 #                           Value: {rounded_val}")
+#-----------------------------------------------------------------------------------------------------------
+
+#-----------------------------------------------------------------------------------------------------------
+### Set the values from frame 161 from the animation data
+# import bpy
+# print("--------------------------------------------------------------------------------------")
+# bone_data = {
+#         'Hips': {'Loc': [8.563, -2.282, -118.068], 'Rot' : [0.982, 0.189, -0.023, 0.021]},
+#         'Spine': {'Loc': [-0.0, -0.0, -0.0], 'Rot' : [0.999, 0.031, 0.044, -0.001]},
+#         'Spine1': {'Loc': [0.0, -0.0, -0.0], 'Rot' : [0.992, 0.116, 0.044, -0.005]},
+#         'Neck': {'Loc': [0.0, -0.026, -0.0], 'Rot' : [0.98, -0.194, -0.015, 0.051]},
+#         'Head': {'Loc': [-0.0, -0.026, -0.0], 'Rot' : [0.997, -0.066, -0.027, -0.014]},
+#         'LeftShoulder': {'Loc': [-0.0, 0.0, 0.0], 'Rot' : [0.996, -0.002, 0.084, 0.016]},
+#         'LeftArm': {'Loc': [0.0, -0.0, 0.0], 'Rot' : [0.832, -0.157, 0.282, 0.451]},
+#         'LeftForeArm': {'Loc': [-0.0, -0.0, -0.0], 'Rot' : [0.81, -0.582, 0.062, -0.045]},
+#         'LeftHand': {'Loc': [-0.0, 0.0, 0.0], 'Rot' : [0.965, -0.122, 0.083, -0.218]},
+#         'RightShoulder': {'Loc': [-0.0, 0.0, 0.0], 'Rot' : [0.996, 0.085, -0.029, 0.003]},
+#         'RightArm': {'Loc': [0.0, -0.0, 0.0], 'Rot' : [0.897, 0.225, -0.05, 0.378]},
+#         'RightForeArm': {'Loc': [0.0, -0.0, -0.0], 'Rot' : [0.575, 0.816, -0.03, -0.043]},
+#         'RightHand': {'Loc': [-0.0, 0.0, 0.0], 'Rot' : [0.947, 0.106, -0.097, -0.286]},
+#         'LeftUpLeg': {'Loc': [0.0, 0.0, 0.0], 'Rot' : [0.941, -0.339, 0.019, 0.011]},
+#         'LeftLeg': {'Loc': [-0.0, -0.0, -0.0], 'Rot' : [0.764, 0.645, -0.0, -0.0]},
+#         'LeftFoot': {'Loc': [-0.0, -0.0, -0.0], 'Rot' : [0.999, -0.012, -0.01, -0.043]},
+#         'LeftToeBase': {'Loc': [-0.0, 0.0, -0.0], 'Rot' : [0.993, -0.122, 0.0, -0.0]},
+#         'RightUpLeg': {'Loc': [-0.0, -0.0, -0.0], 'Rot' : [0.974, -0.224, 0.015, -0.015]},
+#         'RightLeg': {'Loc': [-0.0, -0.0, 0.0], 'Rot' : [0.912, 0.41, -0.0, 0.0]},
+#         'RightFoot': {'Loc': [0.0, -0.0, -0.0], 'Rot' : [0.976, -0.212, 0.023, 0.044]},
+#         'RightToeBase': {'Loc': [0.0, 0.0, -0.0], 'Rot' : [0.99, -0.14, 0.0, 0.0]},
+#         }
+
+# #armature = bpy.data.armatures.get("Anthony")
+# armature = bpy.context.object
+# # Go into pose mode to modify bones' pose
+# bpy.ops.object.mode_set(mode='POSE')
+
+# # Iterate through the dictionary and apply location and rotation to each bone
+# for bone_name, data in bone_data.items():
+#     if bone_name in armature.pose.bones:
+#         bone = armature.pose.bones[bone_name]
+        
+#         # Apply location (in pose mode, we set the location relative to the rest position)
+#         bone.location = data["Loc"]
+        
+#         # Apply rotation (set rotation using Euler angles in the bone's local space)
+#         bone.rotation_quaternion = data["Rot"]
+        
+#         print(f"Applied location {data['Loc']} and rotation {data['Rot']} to bone {bone_name}")
+#     else:
+#         print(f"Bone '{bone_name}' not found in the armature.")
+
+# # Return to object mode after applying transformations
+# bpy.ops.object.mode_set(mode='OBJECT')
+
+# for bone in armature.pose.bones:
+#    loc_loc, loc_rot, loc_scale = bone.matrix.decompose()
+# #   glo_loc, glo_rot, glo_scale = bone.matrix_world.decompose()
+#    print("bone.matrix: " + bone.name + " Loc: " + str(loc_loc) + " Rot: " + str(loc_rot))
+#    obj = bone.id_data
+#    matrix_world = obj.matrix_world  # @ bone.matrix
+#    glo_loc, glo_rot, _ = matrix_world.decompose()
+#    print("bone.matrix_world: " + bone.name + " Loc: " + str(glo_loc) + " Rot: " + str(glo_rot))
+#    matrix_final = obj.matrix_world @ bone.matrix
+#    fin_loc, fin_rot, _ = matrix_final.decompose()
+#    print("bone.matrix_final: " + bone.name + " Loc: " + str(fin_loc) + " Rot: " + str(fin_rot))
 #-----------------------------------------------------------------------------------------------------------
