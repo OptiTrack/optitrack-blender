@@ -67,8 +67,8 @@ class ConnectionSetup:
                                 "SetProperty,,Trained Markerset Markers,false",
                                 "SetProperty,,Trained Markerset Bones,false",
                                 "SetProperty,,Devices,false",
-                                "SetProperty,,Skeleton Coordinates,Global",
-                                # "SetProperty,,Skeleton Coordinates,Local",
+                                # "SetProperty,,Skeleton Coordinates,Global",
+                                "SetProperty,,Skeleton Coordinates,Local",
                                 "SetProperty,,Bone Naming Convention,FBX",
                                 "SetProperty,,Up Axis,Y-Axis"]
                 for sz_command in sz_commands:
@@ -206,7 +206,7 @@ class ConnectionSetup:
         for key2 in data_dict[ 'ske_data' ]:
             if ('skeleton' in self.assets_blender) and (key2 in self.assets_blender['skeleton']):
                 # m_ske_id = key2
-                asset_type = 'skeleton'
+                # asset_type = 'skeleton'
                 b_id = self.assets_blender['skeleton'][key2]['b_ID']
                 m_ske_val = data_dict['ske_data'][key2] # ske.m_id = key2
                 for k2, v2 in m_ske_val.items():
@@ -288,7 +288,8 @@ class ConnectionSetup:
                                         self.frame_start = q_val[3]
                                     self.live_record = True
                                     current_frame = (q_val[3] - self.frame_start)
-                                    if bpy.context.scene.frame_start <= current_frame <= bpy.context.scene.frame_end:
+                                    if bpy.context.scene.frame_start <= current_frame <= \
+                                        bpy.context.scene.frame_end:
                                         bpy.context.scene.frame_set(current_frame)
                                         # my_obj = self.rev_assets_blender[self.assets_blender[q_val[0]]]['obj']
                                         if q_val[4] == 'rigid_body':
@@ -300,7 +301,8 @@ class ConnectionSetup:
                                         my_obj.keyframe_insert(data_path="location", frame=current_frame)
                                         my_obj.rotation_mode = 'QUATERNION'
                                         my_obj.rotation_quaternion = q_val[2]
-                                        my_obj.keyframe_insert(data_path="rotation_quaternion",frame=current_frame)
+                                        my_obj.keyframe_insert(data_path="rotation_quaternion",\
+                                                               frame=current_frame)
 
                                 # no recording
                                 else:
@@ -322,7 +324,8 @@ class ConnectionSetup:
                                     if bpy.context.scene.frame_end <= q_val[3]:
                                         bpy.context.scene.frame_end = q_val[3]
                                     bpy.context.scene.frame_set(q_val[3])
-                                    # my_obj = self.rev_assets_blender[self.assets_blender[q_val[0]]]['obj'] # new_id
+                                    # my_obj = self.rev_assets_blender[self.assets_blender[q_val[0]]]['obj']\
+                                    #  # new_id
                                     if q_val[4] == 'rigid_body':
                                         my_obj = self.rev_assets_blender[q_val[0]]['obj']
                                         my_obj.location = q_val[1]
@@ -333,7 +336,6 @@ class ConnectionSetup:
                                     elif q_val[4] == 'skeleton':
                                         armature = self.rev_assets_blender[q_val[0]]['obj']
                                         for bone in armature.pose.bones[:]:
-                                            print(bone.name)
                                             bone.location = q_val[1]
                                             bone.keyframe_insert(data_path="location", frame=q_val[3])
                                             bone.rotation_mode = 'QUATERNION'
@@ -343,7 +345,8 @@ class ConnectionSetup:
                                         # print(armature.worldPosition)
                                         # bpy.ops.object.mode_set(mode='POSE')
                                         # my_obj.pose_head = q_val[1] - armature.worldPosition
-                                        # my_obj.location = armature.matrix_world.inverted() @ mathutils.Vector(q_val[1])
+                                        # my_obj.location = armature.matrix_world.inverted() @ \
+                                        # mathutils.Vector(q_val[1])
                                         
                                     
                                     # if q_val[4] == 'rigid_body':
@@ -360,7 +363,8 @@ class ConnectionSetup:
                                 # selective keyframes
                                 elif bpy.context.window_manager.record1_status == True:
                                     bpy.context.window_manager.record2_status = False
-                                    if bpy.context.scene.frame_start <= q_val[3] <= bpy.context.scene.frame_end:
+                                    if bpy.context.scene.frame_start <= q_val[3] <= \
+                                        bpy.context.scene.frame_end:
                                         bpy.context.scene.frame_set(q_val[3])
                                         # my_obj = self.rev_assets_blender[self.assets_blender[q_val[0]]]['obj']
                                         if q_val[4] == 'rigid_body':
@@ -384,25 +388,90 @@ class ConnectionSetup:
                                     elif q_val[4] == 'skeleton':
                                         armature = self.rev_assets_blender[q_val[0]]['obj']
                                         my_obj = armature.pose.bones.get(q_val[5])
+                                        # for constraint in my_obj.constraints: # issue not with constraints
+                                        #     if constraint.type == 'IK':
+                                        #         # Disable the IK constraint
+                                        #         constraint.influence = 0
                                         my_obj_data = armature.data.bones.get(q_val[5])
                                         my_obj_data.use_inherit_rotation = False
                                         finalrot = mathutils.Quaternion(q_val[2])
-                                        rot_transform = self.armature_rb_transform(armature)
-                                        finalrot = rot_transform.inverted() @ finalrot
-                                        orig_loc, _, _ = my_obj.matrix.decompose()
-                                        orig_loc_mat = mathutils.Matrix.Translation(orig_loc)
-                                        rotation_mat = finalrot.to_matrix().to_4x4()
-                                        # my_obj.location = q_val[1]
-                                        # my_obj.rotation_mode = 'QUATERNION'
-                                        # my_obj.rotation_quaternion = q_val[2]
-                                        my_obj.matrix = orig_loc_mat @ rotation_mat
-                                        new_loc, new_rot, _ = my_obj.matrix.decompose()
+                                        if q_val[5] == 'Hips':
+                                            #####
+                                            # orig_loc = armature.matrix_world.inverted() @ mathutils.Vector(q_val[1])
+                                            orig_loc = armature.matrix_world @ mathutils.Vector(q_val[1])
+                                            my_obj.location = orig_loc
+                                            orig_loc_mat = mathutils.Matrix.Translation(my_obj.location)
+                                            rotation_mat = finalrot.to_matrix().to_4x4()
+                                            my_obj_matrix = orig_loc_mat @ rotation_mat
+                                            # transformed_matrix = armature.convert_space(pose_bone=my_obj, \
+                                            #     matrix=my_obj_matrix, from_space='LOCAL', to_space='WORLD')
+                                            # my_obj.matrix = transformed_matrix
+                                            print(my_obj.name, " ", str(my_obj.location))
+                                            #####
+                                            # armature_world_matrix = armature.matrix_world
+                                            # current_world_head = armature_world_matrix @ my_obj.head
+                                            # translation = mathutils.Vector(q_val[1]) - current_world_head
+                                            # my_obj_location = armature_world_matrix.inverted() @ translation
+                                            # my_obj.head += my_obj_location
+                                            # bpy.context.view_layer.update()
+                                            # print(my_obj.name, " ", str(my_obj.location))
+                                        else:
+                                            orig_loc, _, _ = my_obj.matrix.decompose() # tpose global loc
+                                            rot_transform = self.armature_rb_transform(armature)
+                                            finalrot = rot_transform.inverted() @ finalrot  
+                                            orig_loc_mat = mathutils.Matrix.Translation(orig_loc)
+                                            rotation_mat = finalrot.to_matrix().to_4x4()
+                                            # my_obj.location = q_val[1]
+                                            # my_obj.rotation_mode = 'QUATERNION'
+                                            # my_obj.rotation_quaternion = q_val[2]
+                                            my_obj.matrix = orig_loc_mat @ rotation_mat
+                                            # new_loc, new_rot, _ = my_obj.matrix.decompose()
+                                            # print(my_obj.name, " ", str(my_obj.location))
+                                        
+                                        # bpy.context.view_layer.update()
+
+                                        # If hips, set its position
+                                        # if q_val[5] == 'Hips':
+                                        #     axis = 0
+                                        #     multiplier = 1
+                                        #     mat_obj = my_obj_data.matrix_local.decompose()[1].to_matrix().to_4x4()
+                                        #     if round(mat_obj[2][0], 0) == round(mat_obj[2][2], 0) == 0:
+                                        #         axis = 1
+                                        #         multiplier = mat_obj[2][1]
+                                        #     if round(mat_obj[2][0], 0) == round(mat_obj[2][1], 0) == 0:
+                                        #         axis = 2
+                                        #         multiplier = mat_obj[2][2]
+                                        #     hip_height = 1
+                                        #     tpose_hip_location = orig_loc[axis] * multiplier
+
+                                        #     location_new_x =  q_val[1][0] * tpose_hip_location / hip_height
+                                        #     location_new_y = q_val[1][1] * tpose_hip_location - tpose_hip_location * hip_height
+                                        #     location_new_z = q_val[1][2] * tpose_hip_location / hip_height
+
+                                        #     my_obj.location = [location_new_x, location_new_y, location_new_z]
+
+                                        # local_head_position = my_obj.head
+                                        # pose_head_position = my_obj_data.convert_local_to_pose(\
+                                        #     local_head_position)
+                                        # print("--------------------------------------------------")
+                                        # print("name: ", my_obj.name, ", pose_head: ", str(pose_head_position))
+
                                         # my_obj.rotation_quaternion = [1, 0, 0, 0]
-                                        # my_obj.rotation_quaternion = armature.rotation_euler.to_quaternion() * mathutils.Quaternion(q_val[2]) 
+                                        # my_obj.rotation_quaternion = \
+                                        # armature.rotation_euler.to_quaternion() * \
+                                        # mathutils.Quaternion(q_val[2]) 
                                         # creates more problem
-                                    # print("loc, rot: ", my_obj.name, " ", my_obj.location, " ", my_obj.rotation_quaternion)
-                                    print(f" loc, rot name: {my_obj.name} | Loc: {my_obj.location} | Rot: {my_obj.rotation_quaternion}")
-                                    print(f" bone matrix name: {my_obj.name} | Loc: {new_loc} | Rot: {new_rot}")
+                                    # print("----------------------------------------------------------")
+                                    # print("loc, rot name: ", my_obj.name, " | Loc: ", str(my_obj.location),\
+                                    #       " | Rot: ", str(my_obj.rotation_quaternion))
+                                    # print("bone matrix name: ", my_obj.name, " | Loc: ", str(new_loc),\
+                                    #       " | Rot: ", str(new_rot))
+                                    # print("head_local ", armature.matrix_world.inverted() @ my_obj.head)#\
+                                    # another way to get exact same values as bone matrix
+                                    # print("name: ", my_obj.name, ", head: ", str(my_obj.head), \
+                                    #       ", head_local: ", str(my_obj.head_local)) # no attribute for pose
+                                    # print("bone matrix_local name: ", my_obj.name, ", ", \
+                                    # str(my_obj.matrix_local)) # no attribute for pose
                                     # print("matrix1: ", armature.matrix_world @ my_obj.tail)
                                     # print("getpose: ", my_obj.getPose())
                                     # print("matrix2: ", my_obj.getMatrix(space='worldspace'))

@@ -86,9 +86,9 @@ class MotiveArmatureOperator(Operator):
                 # bone.tail = existing_conn.quat_loc_yup_zup(v[2])
                 val['rb_name'][k]['global_tpose_rot'] = math.radians(v[3])
                 bone.roll = math.radians(v[3])
-                bone.use_connect = True
-                # if v[4] == True:
-                #     bone.use_connect = True
+                # bone.use_connect = True
+                if v[4] == True:
+                    bone.use_connect = True
                 # else:
                 #     bone.use_offset = True
                 #     bpy.ops.object.mode_set(mode='POSE')
@@ -371,6 +371,30 @@ class CreateArmature:
 # import bpy
 # print("--------------------------------------------------------------------------------------")
 # bone_data = {
+#         'Hips': {'Loc': [0.08, 0.91, -1.16], 'Rot' : [0.19, -0.02, 0.02, 0.98]},
+#         'Spine': {'Loc': [-0.00, 0.08, -0.00], 'Rot' : [0.03, 0.05, -0.00, 1.00]},
+#         'Spine1': {'Loc': [0.00, 0.26, 0.00], 'Rot' : [0.12, 0.05, -0.01, 0.99]},
+#         'Neck': {'Loc': [0.00, 0.28, 0.00], 'Rot' : [-0.20, -0.02, 0.05, 0.98]},
+#         'Head': {'Loc': [-0.00, 0.16, 0.02], 'Rot' : [-0.07, -0.03, -0.01, 1.00]},
+#         'LeftShoulder': {'Loc': [0.04, 0.24, -0.00], 'Rot' : [0.08, 0.00, -0.01, 1.00]},
+#         'LeftArm': {'Loc': [0.12, 0.00, -0.00], 'Rot' : [0.29, -0.15, -0.45, 0.83]},
+#         'LeftForeArm': {'Loc': [0.29, -0.00, 0.00], 'Rot' : [0.06, -0.59, 0.04, 0.81]},
+#         'LeftHand': {'Loc': [0.25, -0.00, -0.00], 'Rot' : [0.08, -0.12, 0.22, 0.96]},
+#         'RightShoulder': {'Loc': [-0.04, 0.24, -0.00], 'Rot' : [0.03, 0.08, 0.00, 1.00]},
+#         'RightArm': {'Loc': [-0.12, 0.00, 0.00], 'Rot' : [0.05, 0.22, 0.38, 0.90]},
+#         'RightForeArm': {'Loc': [-0.29, -0.00, -0.00], 'Rot' : [0.03, 0.82, -0.04, 0.56]},
+#         'RightHand': {'Loc': [-0.25, -0.00, -0.00], 'Rot' : [0.10, 0.10, -0.29, 0.95]},
+#         'LeftUpLeg': {'Loc': [0.10, -0.00, 0.00], 'Rot' : [-0.35, -0.02, -0.01, 0.94]},
+#         'LeftLeg': {'Loc': [0.00, -0.45, -0.00], 'Rot' : [0.64, -0.00, -0.00, 0.77]},
+#         'LeftFoot': {'Loc': [0.00, -0.40, 0.00], 'Rot' : [-0.02, 0.04, -0.01, 1.00]},
+#         'LeftToeBase': {'Loc': [-0.00, -0.07, 0.15], 'Rot' : [-0.12, 0.00, 0.00, 0.99]},
+#         'RightUpLeg': {'Loc': [-0.10, 0.00, -0.00], 'Rot' : [-0.21, -0.01, 0.01, 0.98]},
+#         'RightLeg': {'Loc': [0.00, -0.45, -0.00], 'Rot' : [0.39, -0.00, 0.00, 0.92]},
+#         'RightFoot': {'Loc': [-0.00, -0.40, 0.00], 'Rot' : [-0.20, -0.04, 0.03, 0.98]},
+#         'RightToeBase': {'Loc': [0.00, -0.07, 0.15], 'Rot' : [-0.15, 0.00, -0.00, 0.99]},
+#         }
+
+# imported_bone_data = {
 #         'Hips': {'Loc': [8.563, -2.282, -118.068], 'Rot' : [0.982, 0.189, -0.023, 0.021]},
 #         'Spine': {'Loc': [-0.0, -0.0, -0.0], 'Rot' : [0.999, 0.031, 0.044, -0.001]},
 #         'Spine1': {'Loc': [0.0, -0.0, -0.0], 'Rot' : [0.992, 0.116, 0.044, -0.005]},
@@ -393,6 +417,34 @@ class CreateArmature:
 #         'RightFoot': {'Loc': [0.0, -0.0, -0.0], 'Rot' : [0.976, -0.212, 0.023, 0.044]},
 #         'RightToeBase': {'Loc': [0.0, 0.0, -0.0], 'Rot' : [0.99, -0.14, 0.0, 0.0]},
 #         }
+
+# def quat_loc_yup_zup(self, pos):
+#     # Motive's [X, Y, Z] -> Blender [-X, Z, Y]
+#     pos_copy = [0]*3
+#     pos_copy[0] = -pos[0]
+#     pos_copy[1] = pos[2]
+#     pos_copy[2] = pos[1]
+#     return pos_copy
+
+# def quat_product(self, r, s):
+#     t0 = (r[0]*s[0] - r[1]*s[1] - r[2]*s[2] - r[3]*s[3])
+#     t1 = (r[0]*s[1] + r[1]*s[0] - r[2]*s[3] + r[3]*s[2])
+#     t2 = (r[0]*s[2] + r[1]*s[3] + r[2]*s[0] - r[3]*s[1])
+#     t3 = (r[0]*s[3] - r[1]*s[2] + r[2]*s[1] + r[3]*s[0])
+#     return [t0, t1, t2, t3]
+
+# def quat_rot_yup_zup(self, ori):
+#     # Motive's quat p -> Blender's quat p' = qpq^(-1)
+#     q = [0, (1/math.sqrt(2)), (1/math.sqrt(2)), 0]
+#     q_inv = [0, -(1/math.sqrt(2)), -(1/math.sqrt(2)), 0]
+#     p_1 = self.quat_product(q, ori)
+#     p_dash = self.quat_product(p_1, q_inv)
+#     return p_dash
+
+# def sca_first_last(self, ori):
+#     ori = list(ori) # comment out later
+#     ori.append(ori.pop(0))
+#     return ori
 
 # #armature = bpy.data.armatures.get("Anthony")
 # armature = bpy.context.object
