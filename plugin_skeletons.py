@@ -57,14 +57,20 @@ class MotiveArmatureOperator(Operator):
             existing_conn.get_desc_dict(context)
         
         dt = existing_conn.assets_motive['ske_desc']
+        
+        # Create an empty first
+        bpy.ops.object.empty_add(location=(0, 0, 0))
+        empty_object = bpy.context.object
+        empty_object.name = "Origin"
 
         create_armature = CreateArmature(dt)
         create_armature.update_dict()
         
         for key, val in dt.items():
             bone_conv = create_armature.find_bone_convention(key)
+            existing_conn.bone_convention = bone_conv
             # Create a new armature
-            armature = bpy.data.armatures.new("Root")
+            armature = bpy.data.armatures.new(val['name'])
             armature_object = bpy.data.objects.new(val['name'], armature)
             # Link the armature object to the scene
             bpy.context.collection.objects.link(armature_object) # this is where obj is introduced in \
@@ -74,16 +80,26 @@ class MotiveArmatureOperator(Operator):
             
             bpy.ops.object.mode_set(mode='EDIT')  # Switch to edit mode
 
+            bone = armature_object.data.edit_bones.new("Root")
+            bone.roll = math.radians(180)
+
+            # bone.head = (0, 0, 0)
+
             arm_dict = create_armature.adding_armature_entry(key, bone_conv)
 
             for k, v in arm_dict.items():
                 bone = armature_object.data.edit_bones.new(k)
                 if v[0] != None:
                     bone.parent = armature_object.data.edit_bones.get(v[0])
-                bone.head = v[1]
-                # bone.head = existing_conn.quat_loc_yup_zup(v[1])
-                bone.tail = v[2]
-                # bone.tail = existing_conn.quat_loc_yup_zup(v[2])
+                else:
+                    parent = armature_object.data.edit_bones.get("Root")
+                    parent.tail = existing_conn.quat_loc_yup_zup(v[1])
+                    bone.parent = parent
+
+                # bone.head = v[1]
+                bone.head = existing_conn.quat_loc_yup_zup(v[1])
+                # bone.tail = v[2]
+                bone.tail = existing_conn.quat_loc_yup_zup(v[2])
                 val['rb_name'][k]['global_tpose_rot'] = math.radians(v[3])
                 bone.roll = math.radians(v[3])
                 # bone.use_connect = True
@@ -106,7 +122,7 @@ class MotiveArmatureOperator(Operator):
                 # print("bone: " + bone.name + " parent: " + str(v[0]) + " head: " + str(bone.head) + \
                 #     " tail: " + str(bone.tail) + " roll: " + str(math.degrees(bone.roll)))
                 bone_pos = bone.matrix.decompose()[0]
-                # print("bone: " + bone.name + " bone pos: " + str(bone_pos))
+                print("bone: " + bone.name + " bone pos: " + str(bone_pos))
 
             bpy.ops.object.mode_set(mode='OBJECT') # Switch back to object mode
         
@@ -219,27 +235,27 @@ class CreateArmature:
         ls = self.conventions[bone_conv]
         new_entry = {
             ## bone : [parent, head, tail, roll, connect]
-            ls[0] : [self.get_parent(id, ls[0]), self.get_head(id, ls[0]), self.get_tail(id, ls[0]), 0, True],
-            ls[1] : [self.get_parent(id, ls[1]), self.get_head(id, ls[1]), self.get_tail(id, ls[1]), 0, True],
-            ls[2] : [self.get_parent(id, ls[2]), self.get_head(id, ls[2]), self.get_tail(id, ls[2]), 0, True],
-            ls[3] : [self.get_parent(id, ls[3]), self.get_head(id, ls[3]), self.get_tail(id, ls[3]), 0, True],
-            ls[4] : [self.get_parent(id, ls[4]), self.get_head(id, ls[4]), self.create_tail(id, ls[4]), 0, True],
-            ls[5] : [self.get_parent(id, ls[5]), self.get_head(id, ls[5]), self.get_tail(id, ls[5]), 180, False],
-            ls[6] : [self.get_parent(id, ls[6]), self.get_head(id, ls[6]), self.get_tail(id, ls[6]), 180, True],
-            ls[7] : [self.get_parent(id, ls[7]), self.get_head(id, ls[7]), self.get_tail(id, ls[7]), 180, True],
-            ls[8] : [self.get_parent(id, ls[8]), self.get_head(id, ls[8]), self.create_tail(id, ls[8]), 180, True],
-            ls[9] : [self.get_parent(id, ls[9]), self.get_head(id, ls[9]), self.get_tail(id, ls[9]), 0, False],
-            ls[10] : [self.get_parent(id, ls[10]), self.get_head(id, ls[10]), self.get_tail(id, ls[10]), 0, True],
-            ls[11] : [self.get_parent(id, ls[11]), self.get_head(id, ls[11]), self.get_tail(id, ls[11]), 0, True],
-            ls[12] : [self.get_parent(id, ls[12]), self.get_head(id, ls[12]), self.create_tail(id, ls[12]), 0, True],
+            ls[0] : [self.get_parent(id, ls[0]), self.get_head(id, ls[0]), self.get_tail(id, ls[0]), 180, True],
+            ls[1] : [self.get_parent(id, ls[1]), self.get_head(id, ls[1]), self.get_tail(id, ls[1]), 180, True],
+            ls[2] : [self.get_parent(id, ls[2]), self.get_head(id, ls[2]), self.get_tail(id, ls[2]), 180, True],
+            ls[3] : [self.get_parent(id, ls[3]), self.get_head(id, ls[3]), self.get_tail(id, ls[3]), 180, True],
+            ls[4] : [self.get_parent(id, ls[4]), self.get_head(id, ls[4]), self.create_tail(id, ls[4]), 180, True],
+            ls[5] : [self.get_parent(id, ls[5]), self.get_head(id, ls[5]), self.get_tail(id, ls[5]), -90, False],
+            ls[6] : [self.get_parent(id, ls[6]), self.get_head(id, ls[6]), self.get_tail(id, ls[6]), -90, True],
+            ls[7] : [self.get_parent(id, ls[7]), self.get_head(id, ls[7]), self.get_tail(id, ls[7]), -90, True],
+            ls[8] : [self.get_parent(id, ls[8]), self.get_head(id, ls[8]), self.create_tail(id, ls[8]), -90, True],
+            ls[9] : [self.get_parent(id, ls[9]), self.get_head(id, ls[9]), self.get_tail(id, ls[9]), -90, False],
+            ls[10] : [self.get_parent(id, ls[10]), self.get_head(id, ls[10]), self.get_tail(id, ls[10]), -90, True],
+            ls[11] : [self.get_parent(id, ls[11]), self.get_head(id, ls[11]), self.get_tail(id, ls[11]), -90, True],
+            ls[12] : [self.get_parent(id, ls[12]), self.get_head(id, ls[12]), self.create_tail(id, ls[12]), -90, True],
             ls[13] : [self.get_parent(id, ls[13]), self.get_head(id, ls[13]), self.get_tail(id, ls[13]), 180, False],
             ls[14] : [self.get_parent(id, ls[14]), self.get_head(id, ls[14]), self.get_tail(id, ls[14]), 180, True],
-            ls[15] : [self.get_parent(id, ls[15]), self.get_head(id, ls[15]), self.get_tail(id, ls[15]), 0, True],
-            ls[16] : [self.get_parent(id, ls[16]), self.get_head(id, ls[16]), self.create_tail(id, ls[16]), 0, True],
+            ls[15] : [self.get_parent(id, ls[15]), self.get_head(id, ls[15]), self.get_tail(id, ls[15]), -180, True],
+            ls[16] : [self.get_parent(id, ls[16]), self.get_head(id, ls[16]), self.create_tail(id, ls[16]), -180, True],
             ls[17] : [self.get_parent(id, ls[17]), self.get_head(id, ls[17]), self.get_tail(id, ls[17]), 180, False],
             ls[18] : [self.get_parent(id, ls[18]), self.get_head(id, ls[18]), self.get_tail(id, ls[18]), 180, True],
-            ls[19] : [self.get_parent(id, ls[19]), self.get_head(id, ls[19]), self.get_tail(id, ls[19]), 0, True],
-            ls[20] : [self.get_parent(id, ls[20]), self.get_head(id, ls[20]), self.create_tail(id, ls[20]), 0, True],
+            ls[19] : [self.get_parent(id, ls[19]), self.get_head(id, ls[19]), self.get_tail(id, ls[19]), -180, True],
+            ls[20] : [self.get_parent(id, ls[20]), self.get_head(id, ls[20]), self.create_tail(id, ls[20]), -180, True],
         }
         return new_entry
     
