@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 import bpy
+from bpy.types import Object
 from mathutils import Matrix, Quaternion, Vector
 
 
@@ -209,6 +210,8 @@ class SkeletonRepository:
     skeletons: dict[int, SkeletonData] = {}
     skeleton_name_to_id: dict[str, int] = {}  # skeleton_name, skeleton_id
 
+    armature_to_skeleton: dict[Object, int] = {}
+
     @classmethod
     def append_skeleton(cls, skeleton: SkeletonData) -> None:
         cls.skeletons[skeleton.skeleton_id] = skeleton
@@ -226,6 +229,20 @@ class SkeletonRepository:
         return cls.skeletons[skeleton_id]
 
     @classmethod
+    def update_render_object(cls, skeleton_id: str, object: Object):
+        try:
+            skeleton_id = int(skeleton_id)
+        except:
+            skeleton_id = None
+
+        cls.armature_to_skeleton[object] = cls.skeletons.get(skeleton_id)
+
+    @classmethod
     def clear(cls):
         cls.skeletons = {}
         cls.skeleton_name_to_id = {}
+
+        for object in cls.armature_to_skeleton:
+            object.obj_prop.skeletons = "None"
+
+        cls.armature_to_skeleton = {}

@@ -9,6 +9,7 @@ from bpy.props import (
 from bpy.types import PropertyGroup
 
 from .plugin_operators import ConnectOperator
+from .repository.skeleton import SkeletonRepository
 
 
 def get_rb_id_names(self, context):
@@ -94,7 +95,8 @@ def update_skeleton_list(self, context):
         if rev_m_id != "None":
             del existing_conn.assets_blender["skeleton"][rev_m_id]
             existing_conn.rev_assets_blender[b_obj_id]["m_ID"] = "None"
-    # print("assets_blender: ", existing_conn.assets_blender)
+
+    SkeletonRepository.update_render_object(skeleton_id=m_id, object=current_obj)
 
 
 def create_ble_ske_mapping(m_id, b_id, m_data_dict, b_obj):
