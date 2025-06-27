@@ -556,23 +556,6 @@ class ConnectionSetup:
                                                 data_path="rotation_quaternion",
                                                 frame=q_val[3],
                                             )
-                                        # my_obj = armature.pose.bones[q_val[5]]
-                                        # print(armature.worldPosition)
-                                        # bpy.ops.object.mode_set(mode='POSE')
-                                        # my_obj.pose_head = q_val[1] - armature.worldPosition
-                                        # my_obj.location = armature.matrix_world.inverted() @ \
-                                        # mathutils.Vector(q_val[1])
-
-                                    # if q_val[4] == 'rigid_body':
-                                    #     my_obj = self.rev_assets_blender[q_val[0]]['obj']
-                                    # elif q_val[4] == 'skeleton':
-                                    #     armature = self.rev_assets_blender[q_val[0]]['obj']
-                                    #     my_obj = armature.pose.bones[q_val[5]]
-                                    # my_obj.location = q_val[1]
-                                    # my_obj.keyframe_insert(data_path="location", frame=q_val[3])
-                                    # my_obj.rotation_mode = 'QUATERNION'
-                                    # my_obj.rotation_quaternion = q_val[2]
-                                    # my_obj.keyframe_insert(data_path="rotation_quaternion",frame=q_val[3])
 
                                 # selective keyframes
                                 elif bpy.context.window_manager.record1_status == True:
@@ -659,20 +642,6 @@ class ConnectOperator(Operator):
         connection_setup = ConnectionSetup()
 
     def execute(self, context):
-        sphere = bpy.data.objects.get("s_0")
-        if sphere is None:
-            for i in range(21):
-                bpy.ops.mesh.primitive_uv_sphere_add(radius=0.02, location=(0, 0, 0))
-                obj = bpy.context.active_object
-                obj.name = f"s_{i}"
-
-        bpy.ops.object.select_all(action="DESELECT")
-        cube = bpy.data.objects.get("Cube")
-        if cube is not None:
-            cube.select_set(True)
-            bpy.context.view_layer.objects.active = obj
-            bpy.ops.object.delete()
-
         conn = self.connection_setup
         # Initialize streaming client
         if conn.streaming_client is None:
@@ -724,10 +693,13 @@ class RefreshAssetsOperator(Operator):
     bl_label = "Refresh Assets"
 
     def execute(self, context):
+        SkeletonRepository.clear()
+
         existing_conn = ConnectOperator.connection_setup
         existing_conn.request_data_descriptions(existing_conn.streaming_client, context)
         if context.window_manager.start_status:
             existing_conn.pause_button_clicked(context)
+
         return {"FINISHED"}
 
 
@@ -856,6 +828,8 @@ class ResetOperator(Operator):
             existing_connection = ConnectOperator.connection_setup
             existing_connection.stop_button_clicked(context)
             existing_connection.reset_to_initial()
+
+        SkeletonRepository.clear()
 
         existing_connection = None
 

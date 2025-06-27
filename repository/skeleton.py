@@ -1,6 +1,4 @@
-import math
-from dataclasses import asdict, dataclass
-from enum import IntEnum
+from dataclasses import dataclass
 from typing import Any, Optional
 
 import bpy
@@ -128,13 +126,6 @@ class SkeletonData:
                             (x_axis_world, y_axis_world, z_axis_world)
                         )
 
-                        # print(f"{bone.parent.bone_name} bone_matrix")
-                        # print(bone_matrix)
-
-                        # print(f"{bone.parent.bone_name} X축 (world): {x_axis_world}")
-                        # print(f"{bone.parent.bone_name} Y축 (world): {y_axis_world}")
-                        # print(f"{bone.parent.bone_name} Z축 (world): {z_axis_world}")
-
                 edit_bone.roll = 0
                 edit_bone.head = (
                     bone.get_blender_global_pos()
@@ -174,13 +165,6 @@ class SkeletonData:
                         (x_axis_world, y_axis_world, z_axis_world)
                     )
 
-                    # print(f"{bone.bone_name} bone_matrix")
-                    # print(bone_matrix)
-
-                    # print(f"{bone.bone_name} X축 (world): {x_axis_world}")
-                    # print(f"{bone.bone_name} Y축 (world): {y_axis_world}")
-                    # print(f"{bone.bone_name} Z축 (world): {z_axis_world}")
-
                 edit_bone.use_local_location = True
                 edit_bone.use_inherit_rotation = True
 
@@ -211,10 +195,7 @@ class SkeletonData:
     def render_frame_data(self):
         armature = bpy.data.objects[self.skeleton_name]
 
-        for idx, bone in enumerate(self.bones.values()):
-            # sphere = bpy.data.objects[f"s_{idx}"]
-            # sphere.location = bone.to_blender_pos(bone.get_frame_global_pos())
-
+        for bone in self.bones.values():
             pose_bone = armature.pose.bones[bone.bone_name]
 
             if pose_bone.parent is None:
@@ -222,21 +203,6 @@ class SkeletonData:
 
             pose_bone.rotation_mode = "QUATERNION"
             pose_bone.rotation_quaternion = bone.to_blender_rot(bone.frame_rot)
-
-            # bone = armature.pose.bones[bone.bone_name]
-
-            # bone_matrix = bone.matrix
-
-            # x_axis_local = Vector((1, 0, 0))
-            # z_axis_local = Vector((0, 0, 1))
-
-            # x_axis_world = bone_matrix.to_3x3() @ x_axis_local
-            # z_axis_world = bone_matrix.to_3x3() @ z_axis_local
-
-            # print(f"Bone X축 (world): {x_axis_world}")
-            # print(f"Bone Z축 (world): {z_axis_world}")
-
-        return
 
 
 class SkeletonRepository:
@@ -249,11 +215,6 @@ class SkeletonRepository:
         cls.skeleton_name_to_id[skeleton.skeleton_name] = skeleton.skeleton_id
 
     @classmethod
-    def remove_skeleton(cls, skeleton: SkeletonData) -> None:
-        del cls.skeletons[skeleton.skeleton_id]
-        del cls.skeleton_name_to_id[skeleton.skeleton_name]
-
-    @classmethod
     def create_armatures(cls) -> int:
         num_armatures = 0
         for skeleton in cls.skeletons.values():
@@ -263,3 +224,8 @@ class SkeletonRepository:
     @classmethod
     def get_by_id(cls, skeleton_id) -> SkeletonData:
         return cls.skeletons[skeleton_id]
+
+    @classmethod
+    def clear(cls):
+        cls.skeletons = {}
+        cls.skeleton_name_to_id = {}
