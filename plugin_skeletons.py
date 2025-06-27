@@ -1,9 +1,5 @@
-import math
-
-import bpy
 from bpy.types import Operator
 
-from .plugin_operators import ConnectOperator
 from .repository.skeleton import SkeletonRepository
 
 

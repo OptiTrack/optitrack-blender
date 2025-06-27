@@ -407,6 +407,8 @@ class ConnectionSetup:
                 value = (b_id, pos1, rot1, frame_num, "rigid_body", None)
                 values.append(value)
 
+        is_skeleton = False
+
         for skeleton_id, frame_data in data_dict["ske_data"].items():
             if ("skeleton" in self.assets_blender) and (
                 skeleton_id in self.assets_blender["skeleton"]
@@ -414,8 +416,10 @@ class ConnectionSetup:
                 skeleton_data = SkeletonRepository.get_by_id(skeleton_id=skeleton_id)
                 skeleton_data.update_frame_data(data=frame_data)
 
-                value = (skeleton_id, 0, 0, frame_num, "skeleton", None)
-                values.append(value)
+                is_skeleton = True
+
+        if is_skeleton:
+            values.append((None, None, None, frame_num, "skeleton", None))
 
         self.l.acquire()
         try:
@@ -447,25 +451,26 @@ class ConnectionSetup:
                                     print("current_frame: ", current_frame)
                                     bpy.context.scene.frame_set(current_frame)
                                     # q_val[5] -> assetType, q_val[0] -> rbID
+
                                     if q_val[4] == "rigid_body":
                                         my_obj = self.rev_assets_blender[q_val[0]][
                                             "obj"
                                         ]
+                                        my_obj.location = q_val[1]
+                                        my_obj.rotation_mode = "QUATERNION"
+                                        my_obj.rotation_quaternion = q_val[2]
+                                        my_obj.keyframe_insert(
+                                            data_path="location", frame=current_frame
+                                        )
+                                        my_obj.keyframe_insert(
+                                            data_path="rotation_quaternion",
+                                            frame=current_frame,
+                                        )
+
                                     elif q_val[4] == "skeleton":
-                                        armature = self.rev_assets_blender[q_val[0]][
-                                            "obj"
-                                        ]
-                                        my_obj = armature.pose.bones[q_val[5]]
-                                    my_obj.location = q_val[1]
-                                    my_obj.keyframe_insert(
-                                        data_path="location", frame=current_frame
-                                    )
-                                    my_obj.rotation_mode = "QUATERNION"
-                                    my_obj.rotation_quaternion = q_val[2]
-                                    my_obj.keyframe_insert(
-                                        data_path="rotation_quaternion",
-                                        frame=current_frame,
-                                    )
+                                        SkeletonRepository.render_skeletons_and_insert_keyframe(
+                                            keyframe_num=q_val[3],
+                                        )
 
                                 # selective keyframes
                                 elif bpy.context.window_manager.record1_status == True:
@@ -485,21 +490,21 @@ class ConnectionSetup:
                                             my_obj = self.rev_assets_blender[q_val[0]][
                                                 "obj"
                                             ]
+                                            my_obj.location = q_val[1]
+                                            my_obj.rotation_mode = "QUATERNION"
+                                            my_obj.rotation_quaternion = q_val[2]
+                                            my_obj.keyframe_insert(
+                                                data_path="location",
+                                                frame=current_frame,
+                                            )
+                                            my_obj.keyframe_insert(
+                                                data_path="rotation_quaternion",
+                                                frame=current_frame,
+                                            )
                                         elif q_val[4] == "skeleton":
-                                            armature = self.rev_assets_blender[
-                                                q_val[0]
-                                            ]["obj"]
-                                            my_obj = armature.pose.bones[q_val[5]]
-                                        my_obj.location = q_val[1]
-                                        my_obj.keyframe_insert(
-                                            data_path="location", frame=current_frame
-                                        )
-                                        my_obj.rotation_mode = "QUATERNION"
-                                        my_obj.rotation_quaternion = q_val[2]
-                                        my_obj.keyframe_insert(
-                                            data_path="rotation_quaternion",
-                                            frame=current_frame,
-                                        )
+                                            SkeletonRepository.render_skeletons_and_insert_keyframe(
+                                                keyframe_num=q_val[3],
+                                            )
 
                                 # no recording
                                 else:
@@ -508,14 +513,11 @@ class ConnectionSetup:
                                         my_obj = self.rev_assets_blender[q_val[0]][
                                             "obj"
                                         ]
+                                        my_obj.location = q_val[1]
+                                        my_obj.rotation_mode = "QUATERNION"
+                                        my_obj.rotation_quaternion = q_val[2]
                                     elif q_val[4] == "skeleton":
-                                        armature = self.rev_assets_blender[q_val[0]][
-                                            "obj"
-                                        ]
-                                        my_obj = armature.pose.bones[q_val[5]]
-                                    my_obj.location = q_val[1]
-                                    my_obj.rotation_mode = "QUATERNION"
-                                    my_obj.rotation_quaternion = q_val[2]
+                                        SkeletonRepository.render_skeletons_and_insert_keyframe()
 
                             # edit mode
                             else:
@@ -532,30 +534,19 @@ class ConnectionSetup:
                                             "obj"
                                         ]
                                         my_obj.location = q_val[1]
+                                        my_obj.rotation_mode = "QUATERNION"
+                                        my_obj.rotation_quaternion = q_val[2]
                                         my_obj.keyframe_insert(
                                             data_path="location", frame=q_val[3]
                                         )
-                                        my_obj.rotation_mode = "QUATERNION"
-                                        my_obj.rotation_quaternion = q_val[2]
                                         my_obj.keyframe_insert(
                                             data_path="rotation_quaternion",
                                             frame=q_val[3],
                                         )
                                     elif q_val[4] == "skeleton":
-                                        armature = self.rev_assets_blender[q_val[0]][
-                                            "obj"
-                                        ]
-                                        for bone in armature.pose.bones[:]:
-                                            bone.location = q_val[1]
-                                            bone.keyframe_insert(
-                                                data_path="location", frame=q_val[3]
-                                            )
-                                            bone.rotation_mode = "QUATERNION"
-                                            bone.rotation_quaternion = q_val[2]
-                                            bone.keyframe_insert(
-                                                data_path="rotation_quaternion",
-                                                frame=q_val[3],
-                                            )
+                                        SkeletonRepository.render_skeletons_and_insert_keyframe(
+                                            keyframe_num=q_val[3],
+                                        )
 
                                 # selective keyframes
                                 elif bpy.context.window_manager.record1_status == True:
@@ -571,21 +562,20 @@ class ConnectionSetup:
                                             my_obj = self.rev_assets_blender[q_val[0]][
                                                 "obj"
                                             ]
+                                            my_obj.location = q_val[1]
+                                            my_obj.rotation_mode = "QUATERNION"
+                                            my_obj.rotation_quaternion = q_val[2]
+                                            my_obj.keyframe_insert(
+                                                data_path="location", frame=q_val[3]
+                                            )
+                                            my_obj.keyframe_insert(
+                                                data_path="rotation_quaternion",
+                                                frame=q_val[3],
+                                            )
                                         elif q_val[4] == "skeleton":
-                                            armature = self.rev_assets_blender[
-                                                q_val[0]
-                                            ]["obj"]
-                                            my_obj = armature.pose.bones[q_val[5]]
-                                        my_obj.location = q_val[1]
-                                        my_obj.keyframe_insert(
-                                            data_path="location", frame=q_val[3]
-                                        )
-                                        my_obj.rotation_mode = "QUATERNION"
-                                        my_obj.rotation_quaternion = q_val[2]
-                                        my_obj.keyframe_insert(
-                                            data_path="rotation_quaternion",
-                                            frame=q_val[3],
-                                        )
+                                            SkeletonRepository.render_skeletons_and_insert_keyframe(
+                                                keyframe_num=q_val[3],
+                                            )
 
                                 # no recording
                                 else:
@@ -597,13 +587,7 @@ class ConnectionSetup:
                                         my_obj.rotation_mode = "QUATERNION"
                                         my_obj.rotation_quaternion = q_val[2]
                                     elif q_val[4] == "skeleton":
-                                        skeleton_id, _, _, frame_num, _, _ = q_val
-                                        skeleton_data = SkeletonRepository.get_by_id(
-                                            skeleton_id=skeleton_id
-                                        )
-                                        skeleton_data.render_frame_data()
-
-                                        bpy.context.scene.frame_set(frame_num + 1)
+                                        SkeletonRepository.render_skeletons_and_insert_keyframe()
                         except KeyError:
                             # if object id updated in middle of the running .tak
                             pass

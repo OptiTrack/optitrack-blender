@@ -25,6 +25,7 @@ def register():
         plugin_panels,
         plugin_skeletons,
         property_definitions,
+        repository,
     )
 
     if "bpy" not in locals():
@@ -81,9 +82,11 @@ def register():
     bpy.app.handlers.depsgraph_update_pre.append(app_handlers.model_change_handler)
     bpy.app.handlers.load_post.append(app_handlers.load_handler)
 
+    repository.register()
+
 
 def unregister():
-    from . import app_handlers, icon_viewer
+    from . import app_handlers, icon_viewer, repository
 
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
@@ -98,6 +101,8 @@ def unregister():
         bpy.app.handlers.depsgraph_update_pre.remove(app_handlers.model_change_handler)
 
     bpy.app.handlers.load_post.remove(app_handlers.load_handler)
+
+    repository.unregister()
 
 
 if __name__ == "__main__":

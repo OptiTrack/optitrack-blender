@@ -191,26 +191,49 @@ class SkeletonData:
             bone_data = self.get_bone_by_id(bone_id=bone_id)
             bone_data.set_frame_pos(pos)
             bone_data.set_frame_rot(rot)
-            print(bone_data.bone_name, bone_data.frame_pos, bone_data.frame_rot)
 
-    def render_frame_data(self):
-        armature = bpy.data.objects[self.skeleton_name]
+    def render_frame_data(
+        self,
+        object: Object,
+        keyframe_num: Optional[int] = None,
+    ):
+        try:
+            if keyframe_num is None:
+                for bone in self.bones.values():
+                    pose_bone = object.pose.bones[bone.bone_name]
 
-        for bone in self.bones.values():
-            pose_bone = armature.pose.bones[bone.bone_name]
+                    if pose_bone.parent is None:
+                        object.location = bone.to_blender_pos(bone.frame_pos)
 
-            if pose_bone.parent is None:
-                armature.location = bone.to_blender_pos(bone.frame_pos)
+                    pose_bone.rotation_mode = "QUATERNION"
+                    pose_bone.rotation_quaternion = bone.to_blender_rot(bone.frame_rot)
+            else:
+                for bone in self.bones.values():
+                    pose_bone = object.pose.bones[bone.bone_name]
 
-            pose_bone.rotation_mode = "QUATERNION"
-            pose_bone.rotation_quaternion = bone.to_blender_rot(bone.frame_rot)
+                    if pose_bone.parent is None:
+                        pose_bone.location = bone.frame_pos
+
+                    pose_bone.rotation_mode = "QUATERNION"
+                    pose_bone.rotation_quaternion = bone.to_blender_rot(bone.frame_rot)
+
+                    pose_bone.keyframe_insert(
+                        data_path="location",
+                        frame=keyframe_num,
+                    )
+                    pose_bone.keyframe_insert(
+                        data_path="rotation_quaternion",
+                        frame=keyframe_num,
+                    )
+        except ReferenceError:
+            SkeletonRepository.remove_render_object(object)
 
 
 class SkeletonRepository:
     skeletons: dict[int, SkeletonData] = {}
     skeleton_name_to_id: dict[str, int] = {}  # skeleton_name, skeleton_id
 
-    armature_to_skeleton: dict[Object, int] = {}
+    render_object_to_skeleton: dict[Object, Optional[SkeletonData]] = {}
 
     @classmethod
     def append_skeleton(cls, skeleton: SkeletonData) -> None:
@@ -233,16 +256,32 @@ class SkeletonRepository:
         try:
             skeleton_id = int(skeleton_id)
         except:
-            skeleton_id = None
+            skeleton_id = -1
 
-        cls.armature_to_skeleton[object] = cls.skeletons.get(skeleton_id)
+        cls.render_object_to_skeleton[object] = cls.skeletons.get(skeleton_id)
+
+    @classmethod
+    def remove_render_object(cls, object: Object):
+        del SkeletonRepository.render_object_to_skeleton[object]
 
     @classmethod
     def clear(cls):
         cls.skeletons = {}
         cls.skeleton_name_to_id = {}
 
-        for object in cls.armature_to_skeleton:
-            object.obj_prop.skeletons = "None"
+        for object in cls.render_object_to_skeleton:
+            try:
+                object.obj_prop.skeletons = "None"
+            except:
+                continue
 
-        cls.armature_to_skeleton = {}
+        cls.render_object_to_skeleton = {}
+
+    @classmethod
+    def render_skeletons_and_insert_keyframe(cls, keyframe_num: Optional[int] = None):
+        for object, skeleton_data in cls.render_object_to_skeleton.items():
+            if skeleton_data:
+                skeleton_data.render_frame_data(
+                    object=object,
+                    keyframe_num=keyframe_num,
+                )
