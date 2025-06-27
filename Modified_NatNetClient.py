@@ -21,7 +21,10 @@ import sys
 import time
 from threading import Thread
 
+import mathutils
+
 from . import DataDescriptions, MoCapData
+from .repository.skeleton import BoneData, SkeletonData, SkeletonRepository
 
 
 def trace(*args):
@@ -33,14 +36,14 @@ def trace(*args):
 # Used for Data Description functions
 def trace_dd(*args):
     # uncomment the one you want to use
-    # print( "".join(map(str,args)) )
+    # print("".join(map(str, args)))
     pass
 
 
 # Used for MoCap Frame Data functions
 def trace_mf(*args):
     # uncomment the one you want to use
-    # print( "".join(map(str,args)) )
+    # print("".join(map(str, args)))
     pass
 
 
@@ -2061,6 +2064,15 @@ class NatNetClient:
 
             desc_dict["ske_desc"] = {}
             for skeleton in data_descs.skeleton_list:
+
+                skeleton_name = DataDescriptions.get_as_string(skeleton.name)
+                skeleton_data = SkeletonData(
+                    skeleton_id=skeleton.id_num,
+                    skeleton_name=skeleton_name,
+                    bones={},
+                )
+                SkeletonRepository.append_skeleton(skeleton=skeleton_data)
+
                 ske_name_len = len(DataDescriptions.get_as_string(skeleton.name))
                 desc_dict["ske_desc"][skeleton.id_num] = {}
                 desc_dict["ske_desc"][skeleton.id_num]["name"] = (
@@ -2087,6 +2099,18 @@ class NatNetClient:
                         "pos": rigid_body.pos,
                         "parent_id": rigid_body.parent_id,
                     }
+
+                    bone_name = DataDescriptions.get_as_string(rigid_body.sz_name)[
+                        ske_name_len + 1 :
+                    ]
+
+                    bone_data = BoneData(
+                        bone_id=rigid_body.id_num,
+                        bone_name=bone_name,
+                        t_pose_head=mathutils.Vector(rigid_body.pos),
+                        parent=skeleton_data.bones.get(rigid_body.parent_id),
+                    )
+                    skeleton_data.append_bone(bone=bone_data)
 
         elif message_id == self.NAT_SERVERINFO:
             trace("Message ID  : %3.1d NAT_SERVERINFO" % message_id)
