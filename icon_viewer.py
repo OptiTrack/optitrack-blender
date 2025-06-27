@@ -1,15 +1,17 @@
 import os
+
 import bpy
 import bpy.utils.previews
 
-class IconsLoader():
+
+class IconsLoader:
     icons = None
 
     @classmethod
     def registering_icons(cls):
         if cls.icons is not None:
             return cls.icons
-        
+
         # Creating a new preview collection
         icons_dict = bpy.utils.previews.new()
 
@@ -17,11 +19,22 @@ class IconsLoader():
         my_icons_dir = os.path.join(os.path.dirname(__file__), "icons")
 
         # Loading a preview thumbnail of a file and storing in the previews collection
-        icon_ls = ["Motive", "Connect", "Stop", "Refresh", "RigidBody", "Awaiting", \
-                   "Checkmark", "Pause", "Info", "Record", "RecordStop"]
+        icon_ls = [
+            "Motive",
+            "Connect",
+            "Stop",
+            "Refresh",
+            "RigidBody",
+            "Awaiting",
+            "Checkmark",
+            "Pause",
+            "Info",
+            "Record",
+            "RecordStop",
+        ]
         for icon in icon_ls:
-            icons_dict.load(icon, os.path.join(my_icons_dir, icon + ".png"), 'IMAGE')
-    
+            icons_dict.load(icon, os.path.join(my_icons_dir, icon + ".png"), "IMAGE")
+
         cls.icons = icons_dict
         return icons_dict
 
@@ -30,7 +43,7 @@ class IconsLoader():
         if cls.icons is None:
             cls.registering_icons()
         return cls.icons.get(icon_name).icon_id
-        
+
     @classmethod
     def unregistering_icons(cls):
         if cls.icons:
