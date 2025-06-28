@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 import bpy
-from bpy.types import Object
+from bpy.types import EditBone, Object
 from mathutils import Matrix, Quaternion, Vector
 
 
@@ -14,10 +14,11 @@ class BoneData:
     parent: Optional["BoneData"] = None
 
     child: Optional["BoneData"] = None
+
     frame_pos: Optional[Vector] = None
     frame_rot: Optional[Quaternion] = None
-    frame_global_pos: Optional[Vector] = None
-    frame_global_rot: Optional[Quaternion] = None
+
+    _blender_frame_rot: Optional[Quaternion] = None
 
     transform_matrix: Optional[Matrix] = None
 
@@ -29,30 +30,16 @@ class BoneData:
 
     def set_frame_pos(self, frame_pos: Vector):
         self.frame_pos = frame_pos
-        self.frame_global_pos = None
+        self._blender_frame_pos = None
 
     def set_frame_rot(self, frame_rot: Quaternion):
         self.frame_rot = frame_rot
-        self.frame_global_rot = None
+        self._blender_frame_rot = None
 
-    def get_frame_global_pos(self) -> Vector:
-        if self.frame_global_pos is None:
-            frame_global_pos = self.frame_pos
-            if self.parent is not None:
-                frame_global_pos = (
-                    self.parent.get_frame_global_pos()
-                    + self.parent.get_frame_global_rot() @ frame_global_pos
-                )
-            self.frame_global_pos = frame_global_pos
-        return self.frame_global_pos
-
-    def get_frame_global_rot(self) -> Quaternion:
-        if self.frame_global_rot is None:
-            frame_global_rot = self.frame_rot
-            if self.parent is not None:
-                frame_global_rot = self.parent.get_frame_global_rot() @ frame_global_rot
-            self.frame_global_rot = frame_global_rot
-        return self.frame_global_rot
+    def get_blender_frame_rot(self) -> Quaternion:
+        if self._blender_frame_rot is None:
+            self._blender_frame_rot = self.to_blender_rot(self.frame_rot)
+        return self._blender_frame_rot
 
     def get_global_pos(self) -> Vector:
         global_pos = self.t_pose_head
@@ -61,29 +48,43 @@ class BoneData:
         return global_pos
 
     def get_blender_global_pos(self) -> Vector:
-        global_pos = self.get_global_pos()
-        return Vector((global_pos.x, -global_pos.z, global_pos.y))
+        return self.to_blender_pos(self.get_global_pos())
 
     def to_blender_pos(self, pos: Vector) -> Vector:
         return Vector((pos.x, -pos.z, pos.y))
 
     def to_blender_rot(self, rot: Quaternion) -> Quaternion:
         convert3 = self.transform_matrix
-
         return (convert3 @ rot.to_matrix() @ convert3.inverted()).to_quaternion()
 
     def to_motive_pos(self, pos: Vector) -> Vector:
         return Vector((pos.x, pos.z, -pos.y))
+
+    def set_transform_matrix(self, edit_bone: EditBone):
+        bone_matrix = edit_bone.matrix
+
+        x_axis_local = Vector((1, 0, 0))
+        y_axis_local = Vector((0, 1, 0))
+        z_axis_local = Vector((0, 0, 1))
+
+        x_axis_world = self.to_motive_pos(bone_matrix.to_3x3() @ x_axis_local)
+        y_axis_world = self.to_motive_pos(bone_matrix.to_3x3() @ y_axis_local)
+        z_axis_world = self.to_motive_pos(bone_matrix.to_3x3() @ z_axis_local)
+
+        self.transform_matrix = Matrix((x_axis_world, y_axis_world, z_axis_world))
 
 
 @dataclass
 class SkeletonData:
     skeleton_id: int
     skeleton_name: str
-    bones: dict[int, BoneData]  # bone_id, bone_data
+    bones: dict[int, BoneData]
 
     def append_bone(self, bone: BoneData):
         self.bones[bone.bone_id] = bone
+
+    def get_bone_by_id(self, bone_id: int) -> BoneData:
+        return self.bones[bone_id]
 
     def create_armature(self) -> bool:
         try:
@@ -106,26 +107,7 @@ class SkeletonData:
 
                     if bone.parent.child is bone:
                         edit_bone_parent.tail = bone.get_blender_global_pos()
-
-                        bone_matrix = edit_bone_parent.matrix
-
-                        x_axis_local = Vector((1, 0, 0))
-                        y_axis_local = Vector((0, 1, 0))
-                        z_axis_local = Vector((0, 0, 1))
-
-                        x_axis_world = bone.to_motive_pos(
-                            bone_matrix.to_3x3() @ x_axis_local
-                        )
-                        y_axis_world = bone.to_motive_pos(
-                            bone_matrix.to_3x3() @ y_axis_local
-                        )
-                        z_axis_world = bone.to_motive_pos(
-                            bone_matrix.to_3x3() @ z_axis_local
-                        )
-
-                        bone.parent.transform_matrix = Matrix(
-                            (x_axis_world, y_axis_world, z_axis_world)
-                        )
+                        bone.parent.set_transform_matrix(edit_bone=edit_bone_parent)
 
                 edit_bone.roll = 0
                 edit_bone.head = (
@@ -133,6 +115,7 @@ class SkeletonData:
                     if bone.parent is not None
                     else Vector()
                 )
+
                 if bone.child is None:
                     edit_bone_parent = armature_object.data.edit_bones.get(
                         bone.parent.bone_name
@@ -142,29 +125,11 @@ class SkeletonData:
                         edit_bone_parent.tail - edit_bone_parent.head
                     ).normalized()
 
-                    bone_length = 0.14
+                    bone_length = 0.12
 
                     edit_bone.tail = direction * bone_length + edit_bone.head
 
-                    bone_matrix = edit_bone.matrix
-
-                    x_axis_local = Vector((1, 0, 0))
-                    y_axis_local = Vector((0, 1, 0))
-                    z_axis_local = Vector((0, 0, 1))
-
-                    x_axis_world = bone.to_motive_pos(
-                        bone_matrix.to_3x3() @ x_axis_local
-                    )
-                    y_axis_world = bone.to_motive_pos(
-                        bone_matrix.to_3x3() @ y_axis_local
-                    )
-                    z_axis_world = bone.to_motive_pos(
-                        bone_matrix.to_3x3() @ z_axis_local
-                    )
-
-                    bone.transform_matrix = Matrix(
-                        (x_axis_world, y_axis_world, z_axis_world)
-                    )
+                    bone.set_transform_matrix(edit_bone=edit_bone)
 
                 edit_bone.use_local_location = True
                 edit_bone.use_inherit_rotation = True
@@ -175,9 +140,6 @@ class SkeletonData:
             return True
         finally:
             bpy.ops.object.mode_set(mode="OBJECT")
-
-    def get_bone_by_id(self, bone_id: int) -> BoneData:
-        return self.bones[bone_id]
 
     def update_frame_data(self, data: dict[int, dict[str, Any]]):
         min_key = min(data.keys())  # TODO this is because of bone_id bug
@@ -206,7 +168,7 @@ class SkeletonData:
                         object.location = bone.to_blender_pos(bone.frame_pos)
 
                     pose_bone.rotation_mode = "QUATERNION"
-                    pose_bone.rotation_quaternion = bone.to_blender_rot(bone.frame_rot)
+                    pose_bone.rotation_quaternion = bone.get_blender_frame_rot()
             else:
                 for bone in self.bones.values():
                     pose_bone = object.pose.bones[bone.bone_name]
@@ -215,7 +177,7 @@ class SkeletonData:
                         pose_bone.location = bone.frame_pos
 
                     pose_bone.rotation_mode = "QUATERNION"
-                    pose_bone.rotation_quaternion = bone.to_blender_rot(bone.frame_rot)
+                    pose_bone.rotation_quaternion = bone.get_blender_frame_rot()
 
                     pose_bone.keyframe_insert(
                         data_path="location",
@@ -225,6 +187,7 @@ class SkeletonData:
                         data_path="rotation_quaternion",
                         frame=keyframe_num,
                     )
+
         except ReferenceError:
             SkeletonRepository.remove_render_object(object)
 
