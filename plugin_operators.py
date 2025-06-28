@@ -626,6 +626,8 @@ class ConnectOperator(Operator):
         connection_setup = ConnectionSetup()
 
     def execute(self, context):
+        SkeletonRepository.clear()
+
         conn = self.connection_setup
         # Initialize streaming client
         if conn.streaming_client is None:
@@ -808,12 +810,12 @@ class ResetOperator(Operator):
     bl_label = "Stop Connection"
 
     def execute(self, context):
+        SkeletonRepository.clear()
+
         if ConnectOperator.connection_setup is not None:
             existing_connection = ConnectOperator.connection_setup
             existing_connection.stop_button_clicked(context)
             existing_connection.reset_to_initial()
-
-        SkeletonRepository.clear()
 
         existing_connection = None
 
