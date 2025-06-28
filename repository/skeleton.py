@@ -94,6 +94,24 @@ class SkeletonData:
 
             bpy.context.view_layer.objects.active = armature_object
 
+            def get_bone_direction(head: Vector) -> Vector:
+                heap_head = self.bones[0].child.get_blender_global_pos()
+                offset = head - heap_head
+
+                if offset.z < -0.2:
+                    # Foot
+                    direction = Vector((0, -1, 0))
+                elif offset.x > 0.2:
+                    # Left Hand
+                    direction = Vector((1, 0, 0))
+                elif offset.x < -0.2:
+                    # Right Hand
+                    direction = Vector((-1, 0, 0))
+                else:
+                    # Head
+                    direction = Vector((0, 0, 1))
+                return direction
+
             for bone in self.bones.values():
                 bpy.ops.object.mode_set(mode="EDIT")
 
@@ -117,13 +135,7 @@ class SkeletonData:
                 )
 
                 if bone.child is None:
-                    edit_bone_parent = armature_object.data.edit_bones.get(
-                        bone.parent.bone_name
-                    )
-
-                    direction = (
-                        edit_bone_parent.tail - edit_bone_parent.head
-                    ).normalized()
+                    direction = get_bone_direction(edit_bone.head)
 
                     bone_length = 0.12
 
