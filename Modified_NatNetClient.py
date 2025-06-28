@@ -2104,11 +2104,21 @@ class NatNetClient:
                         ske_name_len + 1 :
                     ]
 
+                    parent_bone_data = skeleton_data.bones.get(rigid_body.parent_id)
+                    if parent_bone_data is None:
+                        parent_bone_data = BoneData(
+                            bone_id=0,
+                            bone_name="Root",
+                            t_pose_head=mathutils.Vector(),
+                            parent=None,
+                        )
+                        skeleton_data.append_bone(parent_bone_data)
+
                     bone_data = BoneData(
                         bone_id=rigid_body.id_num,
                         bone_name=bone_name,
                         t_pose_head=mathutils.Vector(rigid_body.pos),
-                        parent=skeleton_data.bones.get(rigid_body.parent_id),
+                        parent=parent_bone_data,
                     )
                     skeleton_data.append_bone(bone=bone_data)
 

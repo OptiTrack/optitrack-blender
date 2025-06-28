@@ -154,7 +154,7 @@ class SkeletonData:
             bone_data.set_frame_pos(pos)
             bone_data.set_frame_rot(rot)
 
-    def render_frame_data(
+    def render_skeleton_and_insert_keyframe(
         self,
         object: Object,
         keyframe_num: Optional[int] = None,
@@ -165,19 +165,27 @@ class SkeletonData:
                     pose_bone = object.pose.bones[bone.bone_name]
 
                     if pose_bone.parent is None:
-                        object.location = bone.to_blender_pos(bone.frame_pos)
-
-                    pose_bone.rotation_mode = "QUATERNION"
-                    pose_bone.rotation_quaternion = bone.get_blender_frame_rot()
+                        # Root
+                        frame_pos = bone.child.frame_pos - Vector(
+                            (0, bone.child.get_global_pos().y, 0)
+                        )
+                        object.location = bone.to_blender_pos(frame_pos)
+                    else:
+                        pose_bone.rotation_mode = "QUATERNION"
+                        pose_bone.rotation_quaternion = bone.get_blender_frame_rot()
             else:
                 for bone in self.bones.values():
                     pose_bone = object.pose.bones[bone.bone_name]
 
                     if pose_bone.parent is None:
-                        pose_bone.location = bone.frame_pos
-
-                    pose_bone.rotation_mode = "QUATERNION"
-                    pose_bone.rotation_quaternion = bone.get_blender_frame_rot()
+                        # Root
+                        frame_pos = bone.child.frame_pos - Vector(
+                            (0, bone.child.get_global_pos().y, 0)
+                        )
+                        object.location = bone.to_blender_pos(frame_pos)
+                    else:
+                        pose_bone.rotation_mode = "QUATERNION"
+                        pose_bone.rotation_quaternion = bone.get_blender_frame_rot()
 
                     pose_bone.keyframe_insert(
                         data_path="location",
@@ -244,7 +252,7 @@ class SkeletonRepository:
     def render_skeletons_and_insert_keyframe(cls, keyframe_num: Optional[int] = None):
         for object, skeleton_data in cls.render_object_to_skeleton.items():
             if skeleton_data:
-                skeleton_data.render_frame_data(
+                skeleton_data.render_skeleton_and_insert_keyframe(
                     object=object,
                     keyframe_num=keyframe_num,
                 )
