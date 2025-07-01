@@ -61,17 +61,17 @@ class BoneData:
         return Vector((pos.x, pos.z, -pos.y))
 
     def set_transform_matrix(self, edit_bone: EditBone):
-        bone_matrix = edit_bone.matrix
-
-        x_axis_local = Vector((1, 0, 0))
-        y_axis_local = Vector((0, 1, 0))
-        z_axis_local = Vector((0, 0, 1))
-
-        x_axis_world = self.to_motive_pos(bone_matrix.to_3x3() @ x_axis_local)
-        y_axis_world = self.to_motive_pos(bone_matrix.to_3x3() @ y_axis_local)
-        z_axis_world = self.to_motive_pos(bone_matrix.to_3x3() @ z_axis_local)
-
-        self.transform_matrix = Matrix((x_axis_world, y_axis_world, z_axis_world))
+        self.transform_matrix = (
+            Matrix(
+                (
+                    (1, 0, 0),
+                    (0, 0, 1),
+                    (0, -1, 0),
+                )
+            )
+            @ edit_bone.matrix.to_3x3()
+        )
+        self.transform_matrix.transpose()
 
 
 @dataclass
