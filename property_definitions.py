@@ -93,7 +93,7 @@ def update_skeleton_list(self, context):
     else:
         rev_m_id = existing_conn.rev_assets_blender[b_obj_id]["m_ID"]
         if rev_m_id != "None":
-            del existing_conn.assets_blender["skeleton"][rev_m_id]
+            # del existing_conn.assets_blender["skeleton"][rev_m_id]
             existing_conn.rev_assets_blender[b_obj_id]["m_ID"] = "None"
 
     SkeletonRepository.update_render_object(skeleton_id=m_id, object=current_obj)
