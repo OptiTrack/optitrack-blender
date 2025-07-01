@@ -2065,13 +2065,16 @@ class NatNetClient:
             desc_dict["ske_desc"] = {}
             for skeleton in data_descs.skeleton_list:
 
+                skeleton_bones: dict[int, BoneData] = {
+                    0: BoneData(
+                        bone_id=0,
+                        bone_name="Root",
+                        t_pose_head=mathutils.Vector(),
+                        parent=None,
+                    )
+                }
+
                 skeleton_name = DataDescriptions.get_as_string(skeleton.name)
-                skeleton_data = SkeletonData(
-                    skeleton_id=skeleton.id_num,
-                    skeleton_name=skeleton_name,
-                    bones={},
-                )
-                SkeletonRepository.append_skeleton(skeleton=skeleton_data)
 
                 ske_name_len = len(DataDescriptions.get_as_string(skeleton.name))
                 desc_dict["ske_desc"][skeleton.id_num] = {}
@@ -2104,15 +2107,9 @@ class NatNetClient:
                         ske_name_len + 1 :
                     ]
 
-                    parent_bone_data = skeleton_data.bones.get(rigid_body.parent_id)
-                    if parent_bone_data is None:
-                        parent_bone_data = BoneData(
-                            bone_id=0,
-                            bone_name="Root",
-                            t_pose_head=mathutils.Vector(),
-                            parent=None,
-                        )
-                        skeleton_data.append_bone(parent_bone_data)
+                    parent_bone_data = skeleton_bones.get(
+                        rigid_body.parent_id, skeleton_bones[0]
+                    )
 
                     bone_data = BoneData(
                         bone_id=rigid_body.id_num,
@@ -2120,7 +2117,16 @@ class NatNetClient:
                         t_pose_head=mathutils.Vector(rigid_body.pos),
                         parent=parent_bone_data,
                     )
-                    skeleton_data.append_bone(bone=bone_data)
+
+                    skeleton_bones[rigid_body.id_num] = bone_data
+
+                skeleton_data = SkeletonData.create_skeleton(
+                    skeleton_id=skeleton.id_num,
+                    skeleton_name=skeleton_name,
+                    bones=skeleton_bones,
+                )
+
+                SkeletonRepository.append_skeleton(skeleton=skeleton_data)
 
         elif message_id == self.NAT_SERVERINFO:
             trace("Message ID  : %3.1d NAT_SERVERINFO" % message_id)

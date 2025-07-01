@@ -80,18 +80,31 @@ class SkeletonData:
     skeleton_name: str
     bones: dict[int, BoneData]
 
+    @classmethod
+    def create_skeleton(
+        cls, skeleton_id: int, skeleton_name: str, bones: dict[int, BoneData]
+    ) -> "SkeletonData":
+        new_skelenton_data = cls(
+            skeleton_id=skeleton_id,
+            skeleton_name=skeleton_name,
+            bones=bones,
+        )
+        return new_skelenton_data
+
     def append_bone(self, bone: BoneData):
         self.bones[bone.bone_id] = bone
 
     def get_bone_by_id(self, bone_id: int) -> BoneData:
         return self.bones[bone_id]
 
-    def create_armature(self) -> bool:
+    def create_armature(
+        self,
+        is_create_armature: bool = True,
+    ) -> bool:
         try:
             armature = bpy.data.armatures.new(self.skeleton_name)
             armature_object = bpy.data.objects.new(self.skeleton_name, armature)
             bpy.context.collection.objects.link(armature_object)
-
             bpy.context.view_layer.objects.active = armature_object
 
             def get_bone_direction(head: Vector) -> Vector:
@@ -145,13 +158,17 @@ class SkeletonData:
 
                 edit_bone.use_local_location = True
                 edit_bone.use_inherit_rotation = True
-
         except:
             raise
         else:
             return True
         finally:
             bpy.ops.object.mode_set(mode="OBJECT")
+
+            if not is_create_armature:
+                # this ti for setting up transform_matrix
+                bpy.data.objects.remove(armature_object, do_unlink=True)
+                bpy.data.armatures.remove(armature, do_unlink=True)
 
     def update_frame_data(self, data: dict[int, dict[str, Any]]):
         min_key = min(data.keys())  # TODO this is because of bone_id bug
@@ -224,7 +241,15 @@ class SkeletonRepository:
         cls.skeleton_name_to_id[skeleton.skeleton_name] = skeleton.skeleton_id
 
     @classmethod
-    def create_armatures(cls) -> int:
+    def set_transform_matrix(cls) -> None:
+        for skeleton in cls.skeletons.values():
+            if skeleton.bones[0].transform_matrix is None:
+                skeleton.create_armature(is_create_armature=False)
+
+    @classmethod
+    def create_armatures(
+        cls,
+    ) -> int:
         num_armatures = 0
         for skeleton in cls.skeletons.values():
             num_armatures += skeleton.create_armature()

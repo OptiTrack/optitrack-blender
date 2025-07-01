@@ -696,6 +696,7 @@ class StartOperator(Operator):
 
     def execute(self, context):
         ConnectOperator.connection_setup.start_button_clicked(context)
+        SkeletonRepository.set_transform_matrix()
         return {"FINISHED"}
 
 
