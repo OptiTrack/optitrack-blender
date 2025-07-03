@@ -150,7 +150,7 @@ class SkeletonData:
                 if bone.child is None:
                     direction = get_bone_direction(edit_bone.head)
 
-                    bone_length = 0.12
+                    bone_length = edit_bone.parent.length
 
                     edit_bone.tail = direction * bone_length + edit_bone.head
 
