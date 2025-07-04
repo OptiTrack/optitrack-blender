@@ -195,10 +195,14 @@ class SkeletonData:
 
                     if pose_bone.parent is None:
                         # Root
+                        child_bone = bone.child
+                        child_pose_bone = object.pose.bones[child_bone.bone_name]
                         frame_pos = bone.child.frame_pos - Vector(
                             (0, bone.child.get_global_pos().y, 0)
                         )
-                        object.location = bone.to_blender_pos(frame_pos)
+                        child_pose_bone.location = (
+                            child_bone.transform_matrix @ frame_pos
+                        )
                     else:
                         pose_bone.rotation_mode = "QUATERNION"
                         pose_bone.rotation_quaternion = bone.get_blender_frame_rot()
@@ -208,10 +212,14 @@ class SkeletonData:
 
                     if pose_bone.parent is None:
                         # Root
+                        child_bone = bone.child
+                        child_pose_bone = object.pose.bones[child_bone.bone_name]
                         frame_pos = bone.child.frame_pos - Vector(
                             (0, bone.child.get_global_pos().y, 0)
                         )
-                        object.location = bone.to_blender_pos(frame_pos)
+                        child_pose_bone.location = (
+                            child_bone.transform_matrix @ frame_pos
+                        )
                     else:
                         pose_bone.rotation_mode = "QUATERNION"
                         pose_bone.rotation_quaternion = bone.get_blender_frame_rot()
