@@ -68,34 +68,6 @@ def get_skeleton_id_names(self, context):
 def update_skeleton_list(self, context):
     m_id = self.skeletons
     current_obj = bpy.data.objects[self.obj_name]
-    b_obj_id = current_obj.id_data.session_uid
-    existing_conn = ConnectOperator.connection_setup
-
-    if m_id != "None":
-        m_id = int(m_id)
-        if "skeleton" in existing_conn.assets_blender:
-            existing_conn.assets_blender["skeleton"][m_id] = {}
-            existing_conn.assets_blender["skeleton"][m_id]["b_ID"] = b_obj_id
-            existing_conn.assets_blender["skeleton"][m_id]["ske_rb_map"] = {}
-        else:
-            existing_conn.assets_blender["skeleton"] = {}
-            existing_conn.assets_blender["skeleton"][m_id] = {}
-            existing_conn.assets_blender["skeleton"][m_id]["b_ID"] = b_obj_id
-            existing_conn.assets_blender["skeleton"][m_id]["ske_rb_map"] = {}
-
-        existing_conn.rev_assets_blender[b_obj_id]["m_ID"] = m_id
-
-        ske_rb_map = create_ble_ske_mapping(
-            m_id, b_obj_id, existing_conn.assets_motive, current_obj
-        )
-        existing_conn.assets_blender["skeleton"][m_id]["ske_rb_map"] = ske_rb_map
-
-    else:
-        rev_m_id = existing_conn.rev_assets_blender[b_obj_id]["m_ID"]
-        if rev_m_id != "None":
-            # del existing_conn.assets_blender["skeleton"][rev_m_id]
-            existing_conn.rev_assets_blender[b_obj_id]["m_ID"] = "None"
-
     SkeletonRepository.update_render_object(skeleton_id=m_id, object=current_obj)
 
 
