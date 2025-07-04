@@ -757,22 +757,6 @@ class newActionOperator(Operator):
         return {"FINISHED"}
 
 
-class deleteActionOperator(Operator):
-    bl_idname = "wm.delete_action"
-    bl_description = "Delete the most recent action from Action Editor"
-    bl_label = "Delete Action"
-
-    def execute(self, context):
-        # bpy.context.area.type = 'DOPESHEET_EDITOR'
-        # bpy.context.space_data.mode = 'ACTION'
-        action = bpy.data.actions[-1]  # Get the most recent action
-        print(action)
-        bpy.context.object.animation_data.action = action  # Set the action as active
-        bpy.data.actions.remove(action)
-        # bpy.ops.action.delete() # Delete the action
-        return {"FINISHED"}
-
-
 class ResetOperator(Operator):
     bl_idname = "object.reset_operator"
     bl_description = "Reset the connection"

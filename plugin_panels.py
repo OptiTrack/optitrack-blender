@@ -195,11 +195,6 @@ class Recorder(Panel):
                 text=plugin_operators.newActionOperator.bl_label,
             )
 
-            row = layout.row(align=True)
-            row.operator(
-                plugin_operators.deleteActionOperator.bl_idname,
-                text=plugin_operators.deleteActionOperator.bl_label,
-            )
         else:
             row.label(text="Start the connection first")
 

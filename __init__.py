@@ -63,7 +63,6 @@ def register():
         plugin_operators.StartFrameRecordOperator,
         plugin_operators.StopFrameRecordOperator,
         plugin_operators.newActionOperator,
-        plugin_operators.deleteActionOperator,
         plugin_skeletons.MotiveArmatureOperator,
         plugin_panels.Info,
     ]
