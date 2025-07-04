@@ -7,6 +7,7 @@ from . import plugin_operators
 from .icon_viewer import IconsLoader
 from .plugin_operators import ConnectOperator
 from .plugin_skeletons import MotiveArmatureOperator
+from .repository.action import ActionRepository
 
 
 class PluginMotive(Panel):
@@ -189,12 +190,14 @@ class Recorder(Panel):
                     icon_value=IconsLoader.get_icon("Record"),
                 )
 
+            layout.label(
+                text=f"Current Action Name: {ActionRepository.get_action_name()}"
+            )
             row = layout.row(align=True)
             row.operator(
                 plugin_operators.newActionOperator.bl_idname,
                 text=plugin_operators.newActionOperator.bl_label,
             )
-
         else:
             row.label(text="Start the connection first")
 

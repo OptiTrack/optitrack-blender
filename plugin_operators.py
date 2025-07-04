@@ -10,6 +10,7 @@ import mathutils
 from bpy.types import Operator
 
 from .Modified_NatNetClient import NatNetClient
+from .repository.action import ActionRepository
 from .repository.skeleton import BoneData, SkeletonData, SkeletonRepository
 
 # Define a custom property to track states
@@ -42,100 +43,6 @@ class ConnectionSetup:
         self.frame_start = 0
         self.live_record = False
         self.bone_convention = "FBX"
-        self.conventions = {
-            "Motive": [
-                "Hip",
-                "Ab",
-                "Chest",
-                "Neck",
-                "Head",
-                "LShoulder",
-                "LUArm",
-                "LFArm",
-                "LHand",
-                "RShoulder",
-                "RUArm",
-                "RFArm",
-                "RHand",
-                "LThigh",
-                "LShin",
-                "LFoot",
-                "LToe",
-                "RThigh",
-                "RShin",
-                "RFoot",
-                "RToe",
-            ],
-            "FBX": [
-                "Hips",
-                "Spine",
-                "Spine1",
-                "Neck",
-                "Head",
-                "LeftShoulder",
-                "LeftArm",
-                "LeftForeArm",
-                "LeftHand",
-                "RightShoulder",
-                "RightArm",
-                "RightForeArm",
-                "RightHand",
-                "LeftUpLeg",
-                "LeftLeg",
-                "LeftFoot",
-                "LeftToeBase",
-                "RightUpLeg",
-                "RightLeg",
-                "RightFoot",
-                "RightToeBase",
-            ],
-            "UnrealEngine": [
-                "pelvis",
-                "spine_01",
-                "spine_02",
-                "neck_01",
-                "head",
-                "clavicle_l",
-                "upperarm_l",
-                "lowerarm_l",
-                "hand_l",
-                "clavicle_r",
-                "upperarm_r",
-                "lowerarm_r",
-                "hand_r",
-                "thigh_l",
-                "calf_l",
-                "foot_l",
-                "ball_l",
-                "thigh_r",
-                "calf_r",
-                "foot_l",
-                "ball_r",
-            ],
-        }
-        self.bone_roll = [
-            180,
-            180,
-            180,
-            180,
-            180,
-            180,
-            180,
-            180,
-            180,
-            -90,
-            -90,
-            -90,
-            -90,
-            -90,
-            -90,
-            -90,
-            -90,
-            -180,
-            -180,
-            -180,
-            -180,
-        ]
 
     def reset_to_initial(self):
         self.streaming_client = None
@@ -150,100 +57,6 @@ class ConnectionSetup:
         self.frame_start = 0
         self.live_record = False
         self.bone_convention = "FBX"
-        self.conventions = {
-            "Motive": [
-                "Hip",
-                "Ab",
-                "Chest",
-                "Neck",
-                "Head",
-                "LThigh",
-                "LShin",
-                "RThigh",
-                "RShin",
-                "LShoulder",
-                "LUArm",
-                "LFArm",
-                "LHand",
-                "RShoulder",
-                "RUArm",
-                "RFArm",
-                "RHand",
-                "LFoot",
-                "LToe",
-                "RFoot",
-                "RToe",
-            ],
-            "FBX": [
-                "Hips",
-                "Spine",
-                "Spine1",
-                "Neck",
-                "Head",
-                "LeftUpLeg",
-                "LeftLeg",
-                "RightUpLeg",
-                "RightLeg",
-                "LeftShoulder",
-                "LeftArm",
-                "LeftForeArm",
-                "LeftHand",
-                "RightShoulder",
-                "RightArm",
-                "RightForeArm",
-                "RightHand",
-                "LeftFoot",
-                "LeftToeBase",
-                "RightFoot",
-                "RightToeBase",
-            ],
-            "UnrealEngine": [
-                "pelvis",
-                "spine_01",
-                "spine_02",
-                "neck_01",
-                "head",
-                "thigh_l",
-                "calf_l",
-                "thigh_r",
-                "calf_r",
-                "clavicle_l",
-                "upperarm_l",
-                "lowerarm_l",
-                "hand_l",
-                "clavicle_r",
-                "upperarm_r",
-                "lowerarm_r",
-                "hand_r",
-                "foot_l",
-                "ball_l",
-                "foot_l",
-                "ball_r",
-            ],
-        }
-        self.bone_roll = [
-            180,
-            180,
-            180,
-            180,
-            180,
-            180,
-            180,
-            180,
-            180,
-            -90,
-            -90,
-            -90,
-            -90,
-            -90,
-            -90,
-            -90,
-            -90,
-            -180,
-            -180,
-            -180,
-            -180,
-        ]
 
     # def signal_model_changed(self, tracked_model_changed): # flag to keep checking if Motive .tak changed
     #     self.indicate_model_changed = tracked_model_changed
@@ -435,9 +248,12 @@ class ConnectionSetup:
                                     my_obj.location = q_val[1]
                                     my_obj.rotation_mode = "QUATERNION"
                                     my_obj.rotation_quaternion = q_val[2]
+
+                                    ActionRepository.set_action(my_obj)
                                     my_obj.keyframe_insert(
                                         data_path="location", frame=current_frame
                                     )
+
                                     my_obj.keyframe_insert(
                                         data_path="rotation_quaternion",
                                         frame=current_frame,
@@ -469,6 +285,8 @@ class ConnectionSetup:
                                         my_obj.location = q_val[1]
                                         my_obj.rotation_mode = "QUATERNION"
                                         my_obj.rotation_quaternion = q_val[2]
+
+                                        ActionRepository.set_action(my_obj)
                                         my_obj.keyframe_insert(
                                             data_path="location",
                                             frame=current_frame,
@@ -508,6 +326,8 @@ class ConnectionSetup:
                                     my_obj.location = q_val[1]
                                     my_obj.rotation_mode = "QUATERNION"
                                     my_obj.rotation_quaternion = q_val[2]
+
+                                    ActionRepository.set_action(my_obj)
                                     my_obj.keyframe_insert(
                                         data_path="location", frame=q_val[3]
                                     )
@@ -537,6 +357,8 @@ class ConnectionSetup:
                                         my_obj.location = q_val[1]
                                         my_obj.rotation_mode = "QUATERNION"
                                         my_obj.rotation_quaternion = q_val[2]
+
+                                        ActionRepository.set_action(my_obj)
                                         my_obj.keyframe_insert(
                                             data_path="location", frame=q_val[3]
                                         )
@@ -750,10 +572,7 @@ class newActionOperator(Operator):
     bl_label = "Create New Action"
 
     def execute(self, context):
-        if context.view_layer.objects.active:
-            obj = context.view_layer.objects.active
-            obj.select_set(True)
-            obj.animation_data_clear()
+        ActionRepository.create_new_action()
         return {"FINISHED"}
 
 
