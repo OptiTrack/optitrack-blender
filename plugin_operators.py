@@ -324,27 +324,18 @@ class ConnectionSetup:
         return subtracted
 
     def quat_loc_yup_zup(self, pos):
-        # Motive's [X, Y, Z] -> Blender [-X, Z, Y]
+        # Motive's [X, Y, Z] -> Blender [X, -Z, Y]
         pos_copy = [0] * 3
-        pos_copy[0] = -pos[0]
-        pos_copy[1] = pos[2]
+        pos_copy[0] = pos[0]
+        pos_copy[1] = -pos[2]
         pos_copy[2] = pos[1]
         return pos_copy
 
-    def quat_product(self, r, s):
-        t0 = r[0] * s[0] - r[1] * s[1] - r[2] * s[2] - r[3] * s[3]
-        t1 = r[0] * s[1] + r[1] * s[0] - r[2] * s[3] + r[3] * s[2]
-        t2 = r[0] * s[2] + r[1] * s[3] + r[2] * s[0] - r[3] * s[1]
-        t3 = r[0] * s[3] - r[1] * s[2] + r[2] * s[1] + r[3] * s[0]
-        return [t0, t1, t2, t3]
-
     def quat_rot_yup_zup(self, ori):
         # Motive's quat p -> Blender's quat p' = qpq^(-1)
-        q = [0, (1 / math.sqrt(2)), (1 / math.sqrt(2)), 0]
-        q_inv = [0, -(1 / math.sqrt(2)), -(1 / math.sqrt(2)), 0]
-        p_1 = self.quat_product(q, ori)
-        p_dash = self.quat_product(p_1, q_inv)
-        return p_dash
+        ori_quat = mathutils.Quaternion((ori[3], ori[0], ori[1], ori[2]))
+        convert3 = mathutils.Matrix(((1, 0, 0), (0, 0, -1), (0, 1, 0)))
+        return (convert3 @ ori_quat.to_matrix() @ convert3.inverted()).to_quaternion()
 
     def sca_first_last(self, ori):
         ori = list(ori)  # comment out later
@@ -399,9 +390,6 @@ class ConnectionSetup:
                 # Z-Up with quats
                 pos1 = self.quat_loc_yup_zup(m_val["pos"])
                 rot1 = self.quat_rot_yup_zup(m_val["rot"])
-
-                # (x, y, z, w) -> (w, x, y, z)
-                rot1 = self.sca_first_last(rot1)
 
                 # sequence -> (assetID, pos, rot, frame_num, assetType, ske_rb)
                 value = (b_id, pos1, rot1, frame_num, "rigid_body", None)
