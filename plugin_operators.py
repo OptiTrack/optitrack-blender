@@ -249,7 +249,7 @@ class ConnectionSetup:
                                     my_obj.rotation_mode = "QUATERNION"
                                     my_obj.rotation_quaternion = q_val[2]
 
-                                    ActionRepository.set_action(my_obj)
+                                    ActionRepository.assign_action(my_obj)
                                     my_obj.keyframe_insert(
                                         data_path="location", frame=current_frame
                                     )
@@ -286,7 +286,7 @@ class ConnectionSetup:
                                         my_obj.rotation_mode = "QUATERNION"
                                         my_obj.rotation_quaternion = q_val[2]
 
-                                        ActionRepository.set_action(my_obj)
+                                        ActionRepository.assign_action(my_obj)
                                         my_obj.keyframe_insert(
                                             data_path="location",
                                             frame=current_frame,
@@ -327,7 +327,7 @@ class ConnectionSetup:
                                     my_obj.rotation_mode = "QUATERNION"
                                     my_obj.rotation_quaternion = q_val[2]
 
-                                    ActionRepository.set_action(my_obj)
+                                    ActionRepository.assign_action(my_obj)
                                     my_obj.keyframe_insert(
                                         data_path="location", frame=q_val[3]
                                     )
@@ -358,7 +358,7 @@ class ConnectionSetup:
                                         my_obj.rotation_mode = "QUATERNION"
                                         my_obj.rotation_quaternion = q_val[2]
 
-                                        ActionRepository.set_action(my_obj)
+                                        ActionRepository.assign_action(my_obj)
                                         my_obj.keyframe_insert(
                                             data_path="location", frame=q_val[3]
                                         )

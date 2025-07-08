@@ -209,7 +209,7 @@ class SkeletonData:
                         pose_bone.rotation_mode = "QUATERNION"
                         pose_bone.rotation_quaternion = bone.get_blender_frame_rot()
             else:
-                ActionRepository.set_action(object=object)
+                ActionRepository.assign_action(object=object)
                 for bone in self.bones.values():
                     pose_bone = object.pose.bones[bone.bone_name]
 
