@@ -210,7 +210,7 @@ class SkeletonData:
                     child_bone = bone.child
                     child_pose_bone = object.pose.bones[child_bone.bone_name]
 
-                    frame_pos = frames[child_bone.bone_name].location
+                    frame_pos = frames[child_bone.bone_name].location.copy()
                     frame_pos.y -= child_bone.get_global_pos().y
                     child_pose_bone.location = child_bone.transform_matrix @ frame_pos
                 else:
