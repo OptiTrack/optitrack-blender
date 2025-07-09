@@ -1,6 +1,4 @@
 import ipaddress
-import math
-import os
 import sys
 from queue import Queue
 from threading import Lock
@@ -11,7 +9,7 @@ from bpy.types import Operator
 
 from .Modified_NatNetClient import NatNetClient
 from .repository.action import ActionRepository
-from .repository.skeleton import BoneData, SkeletonData, SkeletonRepository
+from .repository.skeleton import SkeletonRepository
 
 # Define a custom property to track states
 bpy.types.WindowManager.connection_status = bpy.props.BoolProperty(
@@ -229,6 +227,9 @@ class ConnectionSetup:
         try:
             if not self.q.empty():
                 q_vals = self.q.get()
+
+                current_frame = None
+
                 for q_val in q_vals:
                     try:
                         # live mode
@@ -242,7 +243,6 @@ class ConnectionSetup:
                                 self.live_record = True
                                 current_frame = q_val[3] - self.frame_start
                                 print("current_frame: ", current_frame)
-                                bpy.context.scene.frame_set(current_frame)
                                 # q_val[5] -> assetType, q_val[0] -> rbID
 
                                 if q_val[4] == "rigid_body":
@@ -271,7 +271,7 @@ class ConnectionSetup:
                                         frame_data,
                                     ) = q_val
                                     SkeletonRepository.render_skeletons_and_insert_keyframe(
-                                        keyframe_num=frame_num,
+                                        keyframe_num=current_frame,
                                         target_skeleton_data=skeleton_data,
                                         frame_data=frame_data,
                                     )
@@ -288,7 +288,6 @@ class ConnectionSetup:
                                     <= current_frame
                                     <= bpy.context.scene.frame_end
                                 ):
-                                    bpy.context.scene.frame_set(current_frame)
                                     # my_obj = self.rev_assets_blender[self.assets_blender[q_val[0]]]['obj']
                                     if q_val[4] == "rigid_body":
                                         my_obj = self.rev_assets_blender[q_val[0]][
@@ -317,7 +316,7 @@ class ConnectionSetup:
                                             frame_data,
                                         ) = q_val
                                         SkeletonRepository.render_skeletons_and_insert_keyframe(
-                                            keyframe_num=frame_num,
+                                            keyframe_num=current_frame,
                                             target_skeleton_data=skeleton_data,
                                             frame_data=frame_data,
                                         )
@@ -331,9 +330,14 @@ class ConnectionSetup:
                                     my_obj.rotation_mode = "QUATERNION"
                                     my_obj.rotation_quaternion = q_val[2]
                                 elif q_val[4] == "skeleton":
-                                    skeleton_id, skeleton_data, _, _, _, frame_data = (
-                                        q_val
-                                    )
+                                    (
+                                        skeleton_id,
+                                        skeleton_data,
+                                        _,
+                                        _,
+                                        _,
+                                        frame_data,
+                                    ) = q_val
                                     SkeletonRepository.render_skeletons_and_insert_keyframe(
                                         target_skeleton_data=skeleton_data,
                                         frame_data=frame_data,
@@ -346,7 +350,9 @@ class ConnectionSetup:
                                 bpy.context.window_manager.record1_status = False
                                 if bpy.context.scene.frame_end <= q_val[3]:
                                     bpy.context.scene.frame_end = q_val[3]
-                                bpy.context.scene.frame_set(q_val[3])
+
+                                current_frame = q_val[3]
+
                                 # my_obj = self.rev_assets_blender[self.assets_blender[q_val[0]]]['obj']\
                                 #  # new_id
                                 if q_val[4] == "rigid_body":
@@ -357,11 +363,11 @@ class ConnectionSetup:
 
                                     ActionRepository.assign_action(my_obj)
                                     my_obj.keyframe_insert(
-                                        data_path="location", frame=q_val[3]
+                                        data_path="location", frame=current_frame
                                     )
                                     my_obj.keyframe_insert(
                                         data_path="rotation_quaternion",
-                                        frame=q_val[3],
+                                        frame=current_frame,
                                     )
                                 elif q_val[4] == "skeleton":
                                     (
@@ -373,7 +379,7 @@ class ConnectionSetup:
                                         frame_data,
                                     ) = q_val
                                     SkeletonRepository.render_skeletons_and_insert_keyframe(
-                                        keyframe_num=frame_num,
+                                        keyframe_num=current_frame,
                                         target_skeleton_data=skeleton_data,
                                         frame_data=frame_data,
                                     )
@@ -386,7 +392,8 @@ class ConnectionSetup:
                                     <= q_val[3]
                                     <= bpy.context.scene.frame_end
                                 ):
-                                    bpy.context.scene.frame_set(q_val[3])
+                                    current_frame = q_val[3]
+
                                     # my_obj = self.rev_assets_blender[self.assets_blender[q_val[0]]]['obj']
                                     if q_val[4] == "rigid_body":
                                         my_obj = self.rev_assets_blender[q_val[0]][
@@ -398,11 +405,12 @@ class ConnectionSetup:
 
                                         ActionRepository.assign_action(my_obj)
                                         my_obj.keyframe_insert(
-                                            data_path="location", frame=q_val[3]
+                                            data_path="location",
+                                            frame=current_frame,
                                         )
                                         my_obj.keyframe_insert(
                                             data_path="rotation_quaternion",
-                                            frame=q_val[3],
+                                            frame=current_frame,
                                         )
                                     elif q_val[4] == "skeleton":
                                         (
@@ -414,7 +422,7 @@ class ConnectionSetup:
                                             frame_data,
                                         ) = q_val
                                         SkeletonRepository.render_skeletons_and_insert_keyframe(
-                                            keyframe_num=frame_num,
+                                            keyframe_num=current_frame,
                                             target_skeleton_data=skeleton_data,
                                             frame_data=frame_data,
                                         )
@@ -427,9 +435,14 @@ class ConnectionSetup:
                                     my_obj.rotation_mode = "QUATERNION"
                                     my_obj.rotation_quaternion = q_val[2]
                                 elif q_val[4] == "skeleton":
-                                    skeleton_id, skeleton_data, _, _, _, frame_data = (
-                                        q_val
-                                    )
+                                    (
+                                        skeleton_id,
+                                        skeleton_data,
+                                        _,
+                                        _,
+                                        _,
+                                        frame_data,
+                                    ) = q_val
                                     SkeletonRepository.render_skeletons_and_insert_keyframe(
                                         target_skeleton_data=skeleton_data,
                                         frame_data=frame_data,
@@ -437,6 +450,8 @@ class ConnectionSetup:
                     except KeyError:
                         # if object id updated in middle of the running .tak
                         pass
+                if current_frame is not None:
+                    bpy.context.scene.frame_set(current_frame),
         finally:
             self.l.release()
 
@@ -561,9 +576,7 @@ class StartRecordOperator(Operator):
     bl_label = "Start Record"
 
     def execute(self, context):
-        ActionRepository.cache_fcurves(
-            SkeletonRepository.get_render_skeletons(),
-        )
+        ActionRepository.cache_fcurves(SkeletonRepository.get_render_skeletons())
         if ConnectOperator.connection_setup is not None:
             context.window_manager.record2_status = True
             context.window_manager.record1_status = False
@@ -606,9 +619,7 @@ class StartFrameRecordOperator(Operator):
     bl_label = "Start Record"
 
     def execute(self, context):
-        ActionRepository.cache_fcurves(
-            SkeletonRepository.get_render_skeletons(),
-        )
+        ActionRepository.cache_fcurves(SkeletonRepository.get_render_skeletons())
         if ConnectOperator.connection_setup is not None:
             context.window_manager.record1_status = True
             context.window_manager.record2_status = False

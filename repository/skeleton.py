@@ -222,20 +222,10 @@ class SkeletonData:
 
             if keyframe_num:
                 ActionRepository.assign_action(object=object)
-                for bone in self.bones.values():
-                    pose_bone = object.pose.bones[bone.bone_name]
-                    if pose_bone.parent is None:
-                        # Root
-                        child_pose_bone = object.pose.bones[bone.child.bone_name]
-                        child_pose_bone.keyframe_insert(
-                            data_path="location",
-                            frame=keyframe_num,
-                        )
-                    else:
-                        pose_bone.keyframe_insert(
-                            data_path="rotation_quaternion",
-                            frame=keyframe_num,
-                        )
+                ActionRepository.keyframe_insert(
+                    object=object,
+                    frame_num=keyframe_num,
+                )
 
         except ReferenceError:
             SkeletonRepository.remove_render_object(object)

@@ -3,7 +3,6 @@ from typing import Protocol
 
 import bpy
 from bpy.types import Action, ActionFCurves, ActionSlot, FCurve, Object, PoseBone
-from mathutils import Quaternion, Vector
 
 
 class FCurveIndexEnum(IntEnum):
@@ -53,8 +52,6 @@ class ActionRepositoryProtocol(Protocol):
     def keyframe_insert(
         cls,
         object: Object,
-        location: Vector,
-        rotation: Quaternion,
         frame_num: int,
     ):
         raise NotImplementedError()
@@ -119,6 +116,44 @@ class ActionRepositoryBase(ActionRepositoryProtocol):
                     pose_bone_fcurves[fcurve_index_enum] = fcurve
                 pose_bone_to_fcurves[pose_bone] = pose_bone_fcurves
             cls.fcurves[object] = pose_bone_to_fcurves
+
+    @classmethod
+    def keyframe_insert(
+        cls,
+        object: Object,
+        frame_num: int,
+    ):
+        pose_bone_to_fcurves = cls.fcurves[object]
+
+        for pose_bone in (
+            pose_bone for pose_bone in object.pose.bones if pose_bone.parent is not None
+        ):
+            fcurves = pose_bone_to_fcurves[pose_bone]
+            if pose_bone.parent.parent is None:
+                fcurve_indexes = (
+                    FCurveIndexEnum.QUATERNION_ROTATION_W,
+                    FCurveIndexEnum.QUATERNION_ROTATION_X,
+                    FCurveIndexEnum.QUATERNION_ROTATION_Y,
+                    FCurveIndexEnum.QUATERNION_ROTATION_Z,
+                    FCurveIndexEnum.LOCATION_X,
+                    FCurveIndexEnum.LOCATION_Y,
+                    FCurveIndexEnum.LOCATION_Z,
+                )
+            else:
+                fcurve_indexes = (
+                    FCurveIndexEnum.QUATERNION_ROTATION_W,
+                    FCurveIndexEnum.QUATERNION_ROTATION_X,
+                    FCurveIndexEnum.QUATERNION_ROTATION_Y,
+                    FCurveIndexEnum.QUATERNION_ROTATION_Z,
+                )
+            for fcurve_index in fcurve_indexes:
+                fcurve = fcurves[fcurve_index]
+                value = fcurve_index.get_keyframe_value(pose_bone)
+                fcurve.keyframe_points.insert(
+                    frame=frame_num,
+                    value=value,
+                    options={"FAST"},
+                ),
 
 
 class ActionRepositoryWithSlot(ActionRepositoryBase):
