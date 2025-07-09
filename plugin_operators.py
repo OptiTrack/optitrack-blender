@@ -561,6 +561,9 @@ class StartRecordOperator(Operator):
     bl_label = "Start Record"
 
     def execute(self, context):
+        ActionRepository.cache_fcurves(
+            SkeletonRepository.get_render_skeletons(),
+        )
         if ConnectOperator.connection_setup is not None:
             context.window_manager.record2_status = True
             context.window_manager.record1_status = False
@@ -603,6 +606,9 @@ class StartFrameRecordOperator(Operator):
     bl_label = "Start Record"
 
     def execute(self, context):
+        ActionRepository.cache_fcurves(
+            SkeletonRepository.get_render_skeletons(),
+        )
         if ConnectOperator.connection_setup is not None:
             context.window_manager.record1_status = True
             context.window_manager.record2_status = False

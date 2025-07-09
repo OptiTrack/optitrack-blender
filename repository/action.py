@@ -2,12 +2,32 @@ from enum import IntEnum
 from typing import Protocol
 
 import bpy
-from bpy.types import Action, ActionSlot, Armature, FCurve, Object, PoseBone
+from bpy.types import Action, ActionFCurves, ActionSlot, FCurve, Object, PoseBone
 from mathutils import Quaternion, Vector
+
+
+class FCurveIndexEnum(IntEnum):
+    QUATERNION_ROTATION_W = 0
+    QUATERNION_ROTATION_X = 1
+    QUATERNION_ROTATION_Y = 2
+    QUATERNION_ROTATION_Z = 3
+
+    LOCATION_X = 4
+    LOCATION_Y = 5
+    LOCATION_Z = 6
+
+    def get_keyframe_value(self, pose_bone: PoseBone) -> float:
+        if self >= 4:
+            value = pose_bone.location[self - 4]
+        else:
+            value = pose_bone.rotation_quaternion[self]
+        return value
 
 
 class ActionRepositoryProtocol(Protocol):
     take_idx: int
+
+    fcurves: dict[Object, dict[PoseBone, dict[FCurveIndexEnum, FCurve]]] = {}
 
     @classmethod
     def get_action_name(cls) -> str:
@@ -18,7 +38,15 @@ class ActionRepositoryProtocol(Protocol):
         raise NotImplementedError()
 
     @classmethod
+    def cache_fcurves(cls, objects: list[Object]):
+        raise NotImplementedError()
+
+    @classmethod
     def assign_action(cls, object: Object):
+        raise NotImplementedError()
+
+    @classmethod
+    def get_fcurves(cls, object: Object) -> ActionFCurves:
         raise NotImplementedError()
 
     @classmethod
@@ -31,17 +59,8 @@ class ActionRepositoryProtocol(Protocol):
     ):
         raise NotImplementedError()
 
-    @classmethod
-    def cache_fcurves(cls, objects: list[Object]):
-        raise NotImplementedError()
 
-
-class ActionRepositoryWithSlot(ActionRepositoryProtocol):
-    take_idx: int = 1
-
-    actions: dict[str, Action] = {}
-    action_slots: dict[Action, dict[Object, ActionSlot]] = {}
-
+class ActionRepositoryBase(ActionRepositoryProtocol):
     @classmethod
     def get_action_name(cls) -> str:
         return f"Take{cls.take_idx}"
@@ -49,6 +68,80 @@ class ActionRepositoryWithSlot(ActionRepositoryProtocol):
     @classmethod
     def create_new_action(cls):
         cls.take_idx += 1
+
+    @classmethod
+    def cache_fcurves(cls, objects: list[Object]):
+
+        cls.fcurves = {}
+        for object in objects:
+            cls.assign_action(object)
+
+            fcurves = cls.get_fcurves(object=object)
+
+            pose_bone_to_fcurves: dict[PoseBone, dict[FCurveIndexEnum, FCurve]] = {}
+            for pose_bone in object.pose.bones:
+                pose_bone_fcurves: dict[FCurveIndexEnum, FCurve] = {}
+                if pose_bone.parent is not None and pose_bone.parent.parent is None:
+                    data_path = f'pose.bones["{pose_bone.name}"].location'
+                    for fcurve_index_enum in [
+                        FCurveIndexEnum.LOCATION_X,
+                        FCurveIndexEnum.LOCATION_Y,
+                        FCurveIndexEnum.LOCATION_Z,
+                    ]:
+                        index = fcurve_index_enum - FCurveIndexEnum.LOCATION_X
+                        fcurve = fcurves.find(
+                            data_path=data_path,
+                            index=index,
+                        )
+                        if fcurve is None:
+                            fcurve = fcurves.new(
+                                data_path=data_path,
+                                index=index,
+                            )
+                        pose_bone_fcurves[fcurve_index_enum] = fcurve
+                data_path = f'pose.bones["{pose_bone.name}"].rotation_quaternion'
+                for fcurve_index_enum in [
+                    FCurveIndexEnum.QUATERNION_ROTATION_W,
+                    FCurveIndexEnum.QUATERNION_ROTATION_X,
+                    FCurveIndexEnum.QUATERNION_ROTATION_Y,
+                    FCurveIndexEnum.QUATERNION_ROTATION_Z,
+                ]:
+                    index = fcurve_index_enum
+                    fcurve = fcurves.find(
+                        data_path=data_path,
+                        index=index,
+                    )
+                    if fcurve is None:
+                        fcurve = fcurves.new(
+                            data_path=data_path,
+                            index=index,
+                        )
+                    pose_bone_fcurves[fcurve_index_enum] = fcurve
+                pose_bone_to_fcurves[pose_bone] = pose_bone_fcurves
+            cls.fcurves[object] = pose_bone_to_fcurves
+
+
+class ActionRepositoryWithSlot(ActionRepositoryBase):
+    take_idx: int = 1
+
+    fcurves: dict[Object, dict[PoseBone, dict[FCurveIndexEnum, FCurve]]] = {}
+
+    @classmethod
+    def get_fcurves(cls, object: Object) -> ActionFCurves:
+        action = object.animation_data.action
+        action_slot = object.animation_data.action_slot
+
+        if not action.layers:
+            action.layers.new("Layer")
+        layer = action.layers[0]
+
+        if not layer.strips:
+            layer.strips.new(type="KEYFRAME")
+        strip = layer.strips[0]
+
+        channelbag = strip.channelbag(action_slot, ensure=True)
+
+        return channelbag.fcurves
 
     @classmethod
     def get_action(cls, action_name: str) -> Action:
@@ -78,16 +171,14 @@ class ActionRepositoryWithSlot(ActionRepositoryProtocol):
             )
 
 
-class ActionRepositoryWithoutSlot(ActionRepositoryProtocol):
+class ActionRepositoryWithoutSlot(ActionRepositoryBase):
     take_idx: int = 1
 
-    @classmethod
-    def get_action_name(cls) -> str:
-        return f"Take{cls.take_idx}"
+    fcurves: dict[Object, dict[PoseBone, dict[FCurveIndexEnum, FCurve]]] = {}
 
     @classmethod
-    def create_new_action(cls):
-        cls.take_idx += 1
+    def get_fcurves(cls, object: Object) -> ActionFCurves:
+        return object.animation_data.action.fcurves
 
     @classmethod
     def assign_action(cls, object: Object):

@@ -201,7 +201,6 @@ class SkeletonData:
         keyframe_num: Optional[int] = None,
     ):
         try:
-            # frames = self.frames
             frames = frame_data
             for bone in self.bones.values():
                 pose_bone = object.pose.bones[bone.bone_name]
@@ -312,3 +311,11 @@ class SkeletonRepository:
                     keyframe_num=keyframe_num,
                     frame_data=frame_data,
                 )
+
+    @classmethod
+    def get_render_skeletons(cls) -> list[Object]:
+        return list(
+            object
+            for object, skeleton_data in cls.render_object_to_skeleton.items()
+            if skeleton_data is not None
+        )
