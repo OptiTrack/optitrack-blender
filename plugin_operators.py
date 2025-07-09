@@ -2,6 +2,7 @@ import ipaddress
 import sys
 from queue import Queue
 from threading import Lock
+from time import time
 
 import bpy
 import mathutils
@@ -42,6 +43,10 @@ class ConnectionSetup:
         self.live_record = False
         self.bone_convention = "FBX"
 
+        FRAME_PER_SEC = 30
+        self.SEC_PER_FRAME = 1 / FRAME_PER_SEC
+        self.current_time = time()
+
     def reset_to_initial(self):
         self.streaming_client = None
         self.indicate_model_changed = None
@@ -55,6 +60,10 @@ class ConnectionSetup:
         self.frame_start = 0
         self.live_record = False
         self.bone_convention = "FBX"
+
+        FRAME_PER_SEC = 30
+        self.SEC_PER_FRAME = 1 / FRAME_PER_SEC
+        self.current_time = time()
 
     # def signal_model_changed(self, tracked_model_changed): # flag to keep checking if Motive .tak changed
     #     self.indicate_model_changed = tracked_model_changed
@@ -225,6 +234,7 @@ class ConnectionSetup:
     def update_object_loc(self):
         self.l.acquire()
         try:
+
             if not self.q.empty():
                 q_vals = self.q.get()
 
@@ -450,8 +460,12 @@ class ConnectionSetup:
                     except KeyError:
                         # if object id updated in middle of the running .tak
                         pass
-                if current_frame is not None:
-                    bpy.context.scene.frame_set(current_frame),
+
+                if current_frame is not None and (
+                    time() - self.current_time >= self.SEC_PER_FRAME
+                ):
+                    bpy.context.scene.frame_set(current_frame)
+                    self.current_time = time()
         finally:
             self.l.release()
 
