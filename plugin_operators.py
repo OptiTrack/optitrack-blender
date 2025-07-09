@@ -210,8 +210,10 @@ class ConnectionSetup:
 
         for skeleton_id, frame_data in data_dict["ske_data"].items():
             skeleton_data = SkeletonRepository.get_by_id(skeleton_id=skeleton_id)
-            skeleton_data.update_frame_data(data=frame_data)
-            values.append((None, None, None, frame_num, "skeleton", None))
+            frame_data = skeleton_data.create_frame_data(data=frame_data)
+            values.append(
+                (skeleton_id, skeleton_data, None, frame_num, "skeleton", frame_data)
+            )
 
         self.l.acquire()
         try:
@@ -260,8 +262,18 @@ class ConnectionSetup:
                                     )
 
                                 elif q_val[4] == "skeleton":
+                                    (
+                                        skeleton_id,
+                                        skeleton_data,
+                                        _,
+                                        frame_num,
+                                        _,
+                                        frame_data,
+                                    ) = q_val
                                     SkeletonRepository.render_skeletons_and_insert_keyframe(
-                                        keyframe_num=q_val[3],
+                                        keyframe_num=frame_num,
+                                        target_skeleton_data=skeleton_data,
+                                        frame_data=frame_data,
                                     )
 
                             # selective keyframes
@@ -296,8 +308,18 @@ class ConnectionSetup:
                                             frame=current_frame,
                                         )
                                     elif q_val[4] == "skeleton":
+                                        (
+                                            skeleton_id,
+                                            skeleton_data,
+                                            _,
+                                            frame_num,
+                                            _,
+                                            frame_data,
+                                        ) = q_val
                                         SkeletonRepository.render_skeletons_and_insert_keyframe(
-                                            keyframe_num=q_val[3],
+                                            keyframe_num=frame_num,
+                                            target_skeleton_data=skeleton_data,
+                                            frame_data=frame_data,
                                         )
 
                             # no recording
@@ -309,7 +331,13 @@ class ConnectionSetup:
                                     my_obj.rotation_mode = "QUATERNION"
                                     my_obj.rotation_quaternion = q_val[2]
                                 elif q_val[4] == "skeleton":
-                                    SkeletonRepository.render_skeletons_and_insert_keyframe()
+                                    skeleton_id, skeleton_data, _, _, _, frame_data = (
+                                        q_val
+                                    )
+                                    SkeletonRepository.render_skeletons_and_insert_keyframe(
+                                        target_skeleton_data=skeleton_data,
+                                        frame_data=frame_data,
+                                    )
 
                         # edit mode
                         else:
@@ -336,8 +364,18 @@ class ConnectionSetup:
                                         frame=q_val[3],
                                     )
                                 elif q_val[4] == "skeleton":
+                                    (
+                                        skeleton_id,
+                                        skeleton_data,
+                                        _,
+                                        frame_num,
+                                        _,
+                                        frame_data,
+                                    ) = q_val
                                     SkeletonRepository.render_skeletons_and_insert_keyframe(
-                                        keyframe_num=q_val[3],
+                                        keyframe_num=frame_num,
+                                        target_skeleton_data=skeleton_data,
+                                        frame_data=frame_data,
                                     )
 
                             # selective keyframes
@@ -367,8 +405,18 @@ class ConnectionSetup:
                                             frame=q_val[3],
                                         )
                                     elif q_val[4] == "skeleton":
+                                        (
+                                            skeleton_id,
+                                            skeleton_data,
+                                            _,
+                                            frame_num,
+                                            _,
+                                            frame_data,
+                                        ) = q_val
                                         SkeletonRepository.render_skeletons_and_insert_keyframe(
-                                            keyframe_num=q_val[3],
+                                            keyframe_num=frame_num,
+                                            target_skeleton_data=skeleton_data,
+                                            frame_data=frame_data,
                                         )
 
                             # no recording
@@ -379,7 +427,13 @@ class ConnectionSetup:
                                     my_obj.rotation_mode = "QUATERNION"
                                     my_obj.rotation_quaternion = q_val[2]
                                 elif q_val[4] == "skeleton":
-                                    SkeletonRepository.render_skeletons_and_insert_keyframe()
+                                    skeleton_id, skeleton_data, _, _, _, frame_data = (
+                                        q_val
+                                    )
+                                    SkeletonRepository.render_skeletons_and_insert_keyframe(
+                                        target_skeleton_data=skeleton_data,
+                                        frame_data=frame_data,
+                                    )
                     except KeyError:
                         # if object id updated in middle of the running .tak
                         pass

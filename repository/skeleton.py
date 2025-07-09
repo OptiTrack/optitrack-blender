@@ -9,6 +9,12 @@ from .action import ActionRepository
 
 
 @dataclass
+class FrameData:
+    location: Vector = Vector()
+    quaternion_rotation: Quaternion = Quaternion()
+
+
+@dataclass
 class BoneData:
     bone_id: int
     bone_name: str
@@ -38,10 +44,8 @@ class BoneData:
         self.frame_rot = frame_rot
         self._blender_frame_rot = None
 
-    def get_blender_frame_rot(self) -> Quaternion:
-        if self._blender_frame_rot is None:
-            self._blender_frame_rot = self.to_blender_rot(self.frame_rot)
-        return self._blender_frame_rot
+    def get_blender_frame_rot(self, frame_rot: Quaternion) -> Quaternion:
+        return self.to_blender_rot(frame_rot)
 
     def get_global_pos(self) -> Vector:
         global_pos = self.t_pose_head
@@ -172,69 +176,67 @@ class SkeletonData:
                 bpy.data.objects.remove(armature_object, do_unlink=True)
                 bpy.data.armatures.remove(armature, do_unlink=True)
 
-    def update_frame_data(self, data: dict[int, dict[str, Any]]):
+    def create_frame_data(
+        self,
+        data: dict[int, dict[str, Any]],
+    ) -> dict[str, FrameData]:
+        frames = {}
         min_key = min(data.keys())  # TODO this is because of bone_id bug
         for bone_id in data:
             pos = Vector(data[bone_id]["pos"])
             x, y, z, w = data[bone_id]["rot"]
             rot = Quaternion((w, x, y, z))
 
-            bone_id = bone_id - min_key + 1  # TODO this is because of bone_id bug
+            frame_data = FrameData(location=pos, quaternion_rotation=rot)
 
-            bone_data = self.get_bone_by_id(bone_id=bone_id)
-            bone_data.set_frame_pos(pos)
-            bone_data.set_frame_rot(rot)
+            bone_data = self.get_bone_by_id(bone_id=bone_id - min_key + 1)
+
+            frames[bone_data.bone_name] = frame_data
+        return frames
 
     def render_skeleton_and_insert_keyframe(
         self,
         object: Object,
+        frame_data: dict[str, FrameData],
         keyframe_num: Optional[int] = None,
     ):
         try:
-            if keyframe_num is None:
-                for bone in self.bones.values():
-                    pose_bone = object.pose.bones[bone.bone_name]
+            # frames = self.frames
+            frames = frame_data
+            for bone in self.bones.values():
+                pose_bone = object.pose.bones[bone.bone_name]
 
-                    if pose_bone.parent is None:
-                        # Root
-                        child_bone = bone.child
-                        child_pose_bone = object.pose.bones[child_bone.bone_name]
-                        frame_pos = bone.child.frame_pos - Vector(
-                            (0, bone.child.get_global_pos().y, 0)
-                        )
-                        child_pose_bone.location = (
-                            child_bone.transform_matrix @ frame_pos
-                        )
-                    else:
-                        pose_bone.rotation_mode = "QUATERNION"
-                        pose_bone.rotation_quaternion = bone.get_blender_frame_rot()
-            else:
+                if pose_bone.parent is None:
+                    # Root
+                    child_bone = bone.child
+                    child_pose_bone = object.pose.bones[child_bone.bone_name]
+
+                    frame_pos = frames[child_bone.bone_name].location
+                    frame_pos.y -= child_bone.get_global_pos().y
+                    child_pose_bone.location = child_bone.transform_matrix @ frame_pos
+                else:
+                    frame_rot = frames[bone.bone_name].quaternion_rotation
+                    pose_bone.rotation_mode = "QUATERNION"
+                    pose_bone.rotation_quaternion = bone.get_blender_frame_rot(
+                        frame_rot=frame_rot,
+                    )
+
+            if keyframe_num:
                 ActionRepository.assign_action(object=object)
                 for bone in self.bones.values():
                     pose_bone = object.pose.bones[bone.bone_name]
-
                     if pose_bone.parent is None:
                         # Root
-                        child_bone = bone.child
-                        child_pose_bone = object.pose.bones[child_bone.bone_name]
-                        frame_pos = bone.child.frame_pos - Vector(
-                            (0, bone.child.get_global_pos().y, 0)
-                        )
-                        child_pose_bone.location = (
-                            child_bone.transform_matrix @ frame_pos
+                        child_pose_bone = object.pose.bones[bone.child.bone_name]
+                        child_pose_bone.keyframe_insert(
+                            data_path="location",
+                            frame=keyframe_num,
                         )
                     else:
-                        pose_bone.rotation_mode = "QUATERNION"
-                        pose_bone.rotation_quaternion = bone.get_blender_frame_rot()
-
-                    pose_bone.keyframe_insert(
-                        data_path="location",
-                        frame=keyframe_num,
-                    )
-                    pose_bone.keyframe_insert(
-                        data_path="rotation_quaternion",
-                        frame=keyframe_num,
-                    )
+                        pose_bone.keyframe_insert(
+                            data_path="rotation_quaternion",
+                            frame=keyframe_num,
+                        )
 
         except ReferenceError:
             SkeletonRepository.remove_render_object(object)
@@ -297,10 +299,16 @@ class SkeletonRepository:
         cls.render_object_to_skeleton = {}
 
     @classmethod
-    def render_skeletons_and_insert_keyframe(cls, keyframe_num: Optional[int] = None):
+    def render_skeletons_and_insert_keyframe(
+        cls,
+        target_skeleton_data: SkeletonData,
+        frame_data: dict[str, FrameData],
+        keyframe_num: Optional[int] = None,
+    ):
         for object, skeleton_data in cls.render_object_to_skeleton.items():
-            if skeleton_data:
+            if skeleton_data is target_skeleton_data:
                 skeleton_data.render_skeleton_and_insert_keyframe(
                     object=object,
                     keyframe_num=keyframe_num,
+                    frame_data=frame_data,
                 )
