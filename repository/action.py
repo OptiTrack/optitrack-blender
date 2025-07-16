@@ -1,3 +1,4 @@
+import re
 from enum import IntEnum
 from typing import Protocol
 
@@ -33,7 +34,7 @@ class ActionRepositoryProtocol(Protocol):
         raise NotImplementedError()
 
     @classmethod
-    def create_new_action(cls):
+    def set_take_idx(cls) -> bool:
         raise NotImplementedError()
 
     @classmethod
@@ -63,8 +64,21 @@ class ActionRepositoryBase(ActionRepositoryProtocol):
         return f"Take{cls.take_idx}"
 
     @classmethod
-    def create_new_action(cls):
-        cls.take_idx += 1
+    def set_take_idx(cls) -> bool:
+        cur_action = bpy.data.actions.get(cls.get_action_name())
+        if cur_action is None:
+            return False
+
+        actions = list(bpy.data.actions)
+        filtered_action_idxes = [
+            int(action.name[4:])
+            for action in actions
+            if re.match(r"^Take[0-9]+$", action.name) is not None
+        ]
+
+        take_idx = 1 if not filtered_action_idxes else max(filtered_action_idxes) + 1
+        cls.take_idx = take_idx
+        return True
 
     @classmethod
     def cache_fcurves(cls, objects: list[Object]):
@@ -195,10 +209,16 @@ class ActionRepositoryWithSlot(ActionRepositoryBase):
 
     @classmethod
     def assign_action(cls, object: Object):
+        action_name = cls.get_action_name()
         if not object.animation_data:
             object.animation_data_create()
-        if object.animation_data.action is None:
-            object.animation_data.action = cls.get_action(cls.get_action_name())
+        if (
+            object.animation_data.action is None
+            or object.animation_data.action.name != action_name
+        ):
+            object.animation_data.action = cls.get_action(
+                action_name=action_name,
+            )
         if object.animation_data.action_slot is None:
             object.animation_data.action_slot = cls.get_action_slot(
                 object.animation_data.action,
