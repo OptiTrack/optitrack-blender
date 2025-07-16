@@ -1,3 +1,4 @@
+import re
 from enum import IntEnum
 from typing import Protocol
 
@@ -33,7 +34,7 @@ class ActionRepositoryProtocol(Protocol):
         raise NotImplementedError()
 
     @classmethod
-    def create_new_action(cls):
+    def set_take_idx(cls) -> bool:
         raise NotImplementedError()
 
     @classmethod
@@ -63,8 +64,27 @@ class ActionRepositoryBase(ActionRepositoryProtocol):
         return f"Take{cls.take_idx}"
 
     @classmethod
-    def create_new_action(cls):
-        cls.take_idx += 1
+    def set_take_idx(cls) -> bool:
+        actions = list(bpy.data.actions)
+        filtered_action_idxes = sorted(
+            [
+                int(action.name[4:])
+                for action in actions
+                if re.match(r"Take[0-9]+", action.name) is not None
+            ]
+        )
+
+        take_idx = 1
+        for action_idx in filtered_action_idxes:
+            if action_idx == take_idx:
+                take_idx += 1
+            elif action_idx > take_idx:
+                break
+
+        if cls.take_idx == take_idx:
+            return False
+        cls.take_idx = take_idx
+        return True
 
     @classmethod
     def cache_fcurves(cls, objects: list[Object]):
