@@ -499,6 +499,7 @@ class ConnectOperator(Operator):
         connection_setup = ConnectionSetup()
 
     def execute(self, context):
+        ActionRepository.set_take_idx()
         SkeletonRepository.clear()
 
         conn = self.connection_setup
@@ -657,7 +658,15 @@ class newActionOperator(Operator):
     bl_label = "Create New Action"
 
     def execute(self, context):
-        ActionRepository.create_new_action()
+        is_updated = ActionRepository.set_take_idx()
+        if is_updated is False:
+
+            def draw(self, context):
+                self.layout.label(
+                    text=f"You haven't recorded '{ActionRepository.get_action_name()}'. Consider recording it before creating a new action.",
+                )
+
+            bpy.context.window_manager.popup_menu(draw, title="Warning", icon="ERROR")
         return {"FINISHED"}
 
 
