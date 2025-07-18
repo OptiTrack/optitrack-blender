@@ -354,7 +354,6 @@ class Info(Panel):
             text="OptiTrack Documentation", icon_value=IconsLoader.get_icon("Info")
         )
         row = layout.row(align=True)
-        row.operator("wm.url_open", text="Website").url = "https://optitrack.com"
-        row.operator("wm.url_open", text="Documentation").url = (
-            "https://docs.optitrack.com/"
-        )
+        
+        row.operator("wm.url_open", text = "Website").url = "https://optitrack.com"
+        row.operator("wm.url_open", text = "Documentation").url = "https://docs.optitrack.com/plugins/optitrack-blender-plugin/optitrack-blender-plugin"
