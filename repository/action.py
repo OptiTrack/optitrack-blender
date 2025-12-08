@@ -3,17 +3,7 @@ from enum import IntEnum
 from typing import Protocol
 
 import bpy
-from bpy.types import (
-    Action,
-    FCurve,
-    Object,
-    PoseBone,
-)
-
-if bpy.app.version >= (5, 0, 0):
-    from bpy.types import ActionChannelbagFCurves as ActionFCurves
-else:
-    from bpy.types import ActionFCurves
+from bpy.types import Action, ActionFCurves, ActionSlot, FCurve, Object, PoseBone
 
 
 class FCurveIndexEnum(IntEnum):
@@ -211,6 +201,13 @@ class ActionRepositoryWithSlot(ActionRepositoryBase):
         return action
 
     @classmethod
+    def get_action_slot(cls, action: Action, object: Object) -> ActionSlot:
+        action_slot = action.slots.get(object.name)
+        if action_slot is None:
+            action_slot = action.slots.new(id_type="OBJECT", name=object.name)
+        return action_slot
+
+    @classmethod
     def assign_action(cls, object: Object):
         action_name = cls.get_action_name()
         if not object.animation_data:
@@ -223,14 +220,10 @@ class ActionRepositoryWithSlot(ActionRepositoryBase):
                 action_name=action_name,
             )
         if object.animation_data.action_slot is None:
-            # get action_slot
-            action_slot = object.animation_data.action.slots.get(object.name)
-            if action_slot is None:
-                action_slot = object.animation_data.action.slots.new(
-                    id_type="OBJECT", name=object.name
-                )
-
-            object.animation_data.action_slot = action_slot
+            object.animation_data.action_slot = cls.get_action_slot(
+                object.animation_data.action,
+                object,
+            )
 
 
 class ActionRepositoryWithoutSlot(ActionRepositoryBase):
@@ -256,6 +249,21 @@ class ActionRepositoryWithoutSlot(ActionRepositoryBase):
                 action = bpy.data.actions.new(action_name)
                 action.use_fake_user = True
             object.animation_data.action = action
+
+    @classmethod
+    def keyframe_insert(
+        cls,
+        object: Object,
+        keyframe_num: int,
+    ):
+        object.keyframe_insert(
+            data_path="location",
+            frame=keyframe_num,
+        )
+        object.keyframe_insert(
+            data_path="rotation_quaternion",
+            frame=keyframe_num,
+        )
 
 
 if bpy.app.version >= (4, 4, 0):
