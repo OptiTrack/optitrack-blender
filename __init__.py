@@ -2,7 +2,7 @@
 bl_info = {
     "name": "Motive Blender Plugin",
     "author": "OptiTrack",
-    "version": (1, 1, 0),
+    "version": (1, 1, 1),
     "blender": (4, 4, 0),
     "location": "View3D > Toolbar > Motive",
     "description": "Stream Motive asset data into Blender",
