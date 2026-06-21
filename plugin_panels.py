@@ -232,7 +232,7 @@ class AssignObjects(Panel):
                 row = layout.row(align=True)
                 obj_name = obj.name
 
-                if obj.type == "MESH":
+                if obj.type in ["MESH", "EMPTY", "CAMERA"]:
                     row.prop(objprop, "rigid_bodies", text=obj_name)
 
                 if obj.type == "ARMATURE":
