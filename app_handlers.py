@@ -44,7 +44,7 @@ def object_handler(scene):
             obj
         ) in bpy.data.objects:  # update the dictionary every time the scene updates
             uid = obj.id_data.session_uid  # session-wide identifier for the data block
-            if obj.type == "MESH":
+            if obj.type in ["MESH", "EMPTY", "CAMERA"]:
                 asset_type = "rigid_body"
             elif obj.type == "ARMATURE":
                 asset_type = "skeleton"
